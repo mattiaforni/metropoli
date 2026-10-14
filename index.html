@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Metropoli · Board azioni e risorse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>window.Sortable || document.write('<script src="https://unpkg.com/sortablejs@1.15.2/Sortable.min.js"><\/script>')</script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>window.html2canvas || document.write('<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"><\/script>')</script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script>window.ExcelJS || document.write('<script src="https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js"><\/script>')</script>
+<style>
+:root{
+  --black:#000;--orange:#FF5200;--orange-2:#FF8A52;--orange-3:#FFC2A3;--orange-t:#FFF1EA;
+  --muted:#7A7A7A;--dgrey:#54595F;--lgrey:#D1D1D1;--soft:#F7F7F5;--border:#E3E3E0;--white:#fff;
+  --ok:#2CA58D;
+  --ft:"Syne",Arial,sans-serif;--fb:"Inter Tight",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--white);color:var(--black);font-family:var(--fb);font-size:14px;line-height:1.4;display:flex;flex-direction:column;overflow:hidden}
+button{font-family:var(--fb);cursor:pointer;color:inherit}
+h1,h2{font-family:var(--ft);font-weight:700;margin:0;letter-spacing:-.02em;line-height:1.05}
+
+/* ---------- top bar */
+.top{display:flex;align-items:center;gap:20px;padding:12px 24px;border-bottom:1px solid var(--border);flex:0 0 auto}
+.brand{font-family:var(--ft);font-weight:700;font-size:20px;letter-spacing:-.02em}
+.top h1{font-size:20px}
+.top .sub{font-size:12px;color:var(--dgrey)}
+.grow{flex:1}
+.status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dgrey);white-space:nowrap}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--lgrey)}
+.status.ok .dot{background:var(--ok)}
+.status.saving .dot{background:var(--orange)}
+.status.off .dot{background:var(--orange);box-shadow:0 0 0 3px var(--orange-t)}
+.status.local .dot{background:var(--dgrey)}
+.btn{border:1px solid var(--black);background:var(--white);color:var(--black);padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.btn:hover{background:var(--orange);border-color:var(--orange);color:var(--white)}
+.btn.dark{background:var(--black);color:var(--white)}
+.btn.dark:hover{background:var(--orange)}
+.btn.ghost{border-color:var(--lgrey)}
+.btn.sm{padding:6px 9px;font-size:10.5px}
+.menu{position:relative}
+.menu-list{position:absolute;right:0;top:calc(100% + 4px);background:var(--white);border:1px solid var(--black);min-width:240px;z-index:30;display:none}
+.menu.open .menu-list{display:block}
+.menu-list button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 14px;font-size:13px}
+.menu-list button:hover{background:var(--orange-t)}
+
+/* ---------- meta + tabs + impact */
+.meta{padding:8px 24px;background:var(--black);color:var(--white);font-size:12.5px;flex:0 0 auto;display:flex;gap:2px;align-items:baseline}
+.meta b{font-family:var(--ft);font-size:13px;color:var(--orange);white-space:nowrap;letter-spacing:.02em;margin-right:10px}
+.tabs{display:flex;padding:0 24px;border-bottom:1px solid var(--border);flex:0 0 auto}
+.tab{border:0;background:none;padding:14px 18px 12px;font-size:14px;font-weight:600;color:var(--dgrey);border-bottom:3px solid transparent;display:flex;gap:10px;align-items:baseline}
+.tab .n{font-family:var(--ft);font-weight:700;color:var(--muted)}
+.tab .prog{font-size:11px;font-weight:500;color:var(--muted)}
+.tab.on{color:var(--black);border-bottom-color:var(--orange)}
+.tab.on .n{color:var(--orange)}
+.ihead{padding:14px 24px 10px;flex:0 0 auto}
+.ihead .eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange);margin-bottom:4px}
+.ihead h2{font-size:24px;margin-bottom:4px}
+.ihead p{margin:0;color:var(--dgrey);max-width:1080px;font-size:13.5px}
+
+/* ---------- board */
+.board{flex:1 1 auto;min-height:220px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:4px 24px 16px;overflow:hidden}
+.col{display:flex;flex-direction:column;min-height:0;background:var(--soft);border:1px solid var(--border)}
+.col-h{padding:10px 12px 9px;display:flex;align-items:baseline;gap:8px;border-bottom:1px solid var(--border);background:var(--white)}
+.col-h .lab{font-family:var(--ft);font-weight:700;font-size:15px}
+.col-h .sub{font-size:11.5px}
+.col-h .cnt{margin-left:auto;font-size:11px;font-weight:700}
+.col-h .mark{width:10px;height:10px;flex:0 0 auto;align-self:center}
+.col[data-col="pool"] .col-h .mark{border:1px solid var(--dgrey)}
+.col[data-col="pool"] .col-h .sub,.col[data-col="pool"] .col-h .cnt,.col[data-col="nf"] .col-h .sub,.col[data-col="nf"] .col-h .cnt{color:var(--dgrey)}
+.col[data-col="s"] .col-h{background:var(--orange-3);border-bottom-color:var(--orange-3)}
+.col[data-col="d"] .col-h{background:var(--orange-2);border-bottom-color:var(--orange-2)}
+.col[data-col="p"] .col-h{background:var(--orange);border-bottom-color:var(--orange)}
+.col[data-col="s"] .mark,.col[data-col="d"] .mark,.col[data-col="p"] .mark{display:none}
+.col[data-col="nf"]{background:#F1F1EF}
+.col[data-col="nf"] .col-h .mark{background:var(--dgrey)}
+.list{flex:1 1 auto;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:60px}
+.col-f{padding:8px 10px;border-top:1px solid var(--border);background:var(--white)}
+.col-f .btn{width:100%}
+.empty-hint{font-size:12px;color:var(--muted);padding:6px 2px;pointer-events:none}
+
+/* ---------- post-it */
+.card{background:var(--white);border:1px solid var(--border);padding:10px 11px 9px;cursor:grab;position:relative;user-select:none;transition:box-shadow .12s}
+.card:hover{box-shadow:0 2px 10px rgba(0,0,0,.09)}
+.card .pen{position:absolute;top:6px;right:7px;font-size:12px;color:var(--muted);opacity:0;transition:opacity .12s}
+.card:hover .pen{opacity:1}
+.card .rank{position:absolute;top:-1px;left:-1px;background:var(--black);color:var(--white);font-family:var(--ft);font-weight:700;font-size:11px;min-width:20px;height:20px;display:flex;align-items:center;justify-content:center}
+.card.ranked .txt{padding-left:16px}
+.card .txt{font-size:13px;line-height:1.35;padding-right:12px}
+.det{margin:8px 0 0;padding:7px 0 0;border-top:1px dashed var(--lgrey);display:flex;flex-direction:column;gap:4px}
+.det div{font-size:12px;line-height:1.35;color:#222}
+.det b{display:block;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--dgrey);margin-bottom:1px}
+.foot{display:flex;align-items:center;gap:6px;margin-top:7px;flex-wrap:wrap}
+.badge-new{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--white);background:var(--dgrey);padding:2px 5px}
+.badge-edit{font-size:10.5px;color:var(--muted)}
+.sortable-ghost{opacity:.35}
+.sortable-chosen{box-shadow:0 6px 18px rgba(0,0,0,.18)}
+
+/* post-it in modifica */
+.card.editing{cursor:default;user-select:text;outline:2px solid var(--orange);outline-offset:-1px;box-shadow:0 6px 22px rgba(0,0,0,.14);padding:10px 11px 11px}
+.card.editing:hover .pen{opacity:0}
+.ed-lab{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange);margin-bottom:8px}
+.field{margin-bottom:9px}
+.field label,.field .lbl{display:block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;color:var(--dgrey)}
+.field textarea,.field input,.field select{width:100%;font-family:var(--fb);font-size:12.5px;padding:7px 8px;border:1px solid var(--lgrey);background:var(--white);color:var(--black);border-radius:0;line-height:1.35}
+.field textarea{resize:none;overflow:hidden;min-height:44px;display:block}
+.field select{font-size:11.5px;padding:5px 6px}
+.field textarea:focus,.field input:focus,.field select:focus{outline:2px solid var(--orange);outline-offset:-1px;border-color:var(--orange)}
+.seg,.chips{display:flex;flex-wrap:wrap;gap:4px}
+.seg button,.chips button{border:1px solid var(--lgrey);background:var(--white);padding:4px 7px;font-size:11px}
+.seg button.on{background:var(--black);color:var(--white);border-color:var(--black)}
+.chips button.on{background:var(--orange);color:var(--white);border-color:var(--orange)}
+.refs-sel{border-top:1px solid var(--border);padding-top:8px;margin-top:2px}
+.orig{font-size:11px;color:var(--dgrey);background:var(--soft);padding:6px 7px;margin-top:4px}
+.orig a{color:var(--orange)}
+.ed-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin:4px -11px -11px;padding:9px 11px 10px;position:sticky;bottom:-10px;background:var(--white);border-top:1px solid var(--border);z-index:2}
+.ed-actions .grow{flex:1}
+.ed-actions .kbd{font-size:10.5px;color:var(--muted);width:100%}
+.del-confirm{display:none;gap:6px;align-items:center;font-size:12px;width:100%;margin-top:4px}
+.del-confirm.on{display:flex}
+
+/* ---------- hover: cambiamento e funzione */
+#pop{position:fixed;z-index:60;width:340px;background:var(--black);color:var(--white);padding:12px 14px;font-size:12.5px;line-height:1.4;pointer-events:none;opacity:0;transition:opacity .12s;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+#pop.on{opacity:1}
+#pop b{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--orange);margin-bottom:3px}
+#pop .blk+.blk{margin-top:10px}
+#pop .none{color:var(--lgrey);font-style:italic}
+
+.banner{display:none;padding:8px 24px;background:var(--orange-t);font-size:12.5px;border-bottom:1px solid var(--orange-3);flex:0 0 auto}
+.banner.on{display:block}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--black);color:var(--white);padding:10px 16px;font-size:13px;z-index:70;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+
+@media (max-height:820px){
+  .top{padding:8px 24px}.top .sub{display:none}.top h1{font-size:18px}
+  .meta{padding:5px 24px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .tab{padding:10px 16px 8px}
+  .ihead{padding:10px 24px 6px}.ihead h2{font-size:20px}.ihead p{font-size:12.5px}
+}
+
+/* ---------- export (fuori schermo) */
+#exportRoot{position:fixed;left:-20000px;top:0;width:2000px;background:#fff;padding:48px;font-family:var(--fb);color:#000}
+.ex-imp{margin-bottom:56px}
+.ex-top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:22px}
+.ex-top .t{font-family:var(--ft);font-weight:700;font-size:30px}
+.ex-top .d{font-size:14px;color:var(--dgrey)}
+.ex-imp .eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange);margin-bottom:6px}
+.ex-imp h2{font-size:30px;margin-bottom:8px}
+.ex-imp p.st{font-size:15px;color:var(--dgrey);margin:0 0 14px}
+.ex-refs{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-bottom:18px;font-size:13px}
+.ex-refs h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dgrey)}
+.ex-refs ul{margin:0;padding-left:18px}
+.ex-refs li{margin-bottom:3px}
+.ex-board{display:grid;gap:14px}
+.ex-col{background:var(--soft);border:1px solid var(--border)}
+.ex-col .list{overflow:visible;padding:12px;gap:10px}
+.ex-col .card{cursor:default;font-size:14px;padding:12px 13px}
+.ex-col .card .txt{font-size:14px;font-weight:600}
+.ex-col .det div{font-size:12.5px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">LAMA</div>
+  <div>
+    <h1>Consorzio Metropoli · Dalle azioni alle risorse</h1>
+    <div class="sub">Ordinare le azioni nel tempo e individuare le risorse per realizzarle</div>
+  </div>
+  <div class="grow"></div>
+  <div class="status" id="status"><span class="dot"></span><span id="statusText">Avvio…</span></div>
+  <div class="menu" id="exportMenu">
+    <button class="btn dark" id="exportBtn" aria-haspopup="true">Esporta</button>
+    <div class="menu-list" role="menu">
+      <button data-exp="xlsx">Matrice aggiornata (Excel)</button>
+      <button data-exp="png-one">Immagine di questo impatto (PNG)</button>
+      <button data-exp="png-all">Immagine dei tre impatti (PNG)</button>
+      <button data-exp="json">Copia di sicurezza (JSON)</button>
+      <button data-exp="import">Ripristina da copia di sicurezza…</button>
+    </div>
+  </div>
+  <input type="file" id="importFile" accept="application/json,.json" hidden>
+</header>
+
+<div class="banner" id="banner"></div>
+<div class="meta"><b>META IMPATTO</b><span id="metaText"></span></div>
+<nav class="tabs" id="tabs"></nav>
+<section class="ihead">
+  <div class="eyebrow" id="iEyebrow"></div>
+  <h2 id="iTitle"></h2>
+  <p id="iStmt"></p>
+</section>
+<main class="board" id="board"></main>
+
+<div id="pop" role="tooltip"></div>
+<div class="toast" id="toast"></div>
+<div id="exportRoot" aria-hidden="true"></div>
+
+<script>
+/* =====================================================================
+   CONFIGURAZIONE
+   Incolla qui l'URL dell'app web Apps Script (finisce con /exec).
+   Lasciato vuoto, la board funziona in modalità locale (dati nel browser).
+   In alternativa l'URL si può passare nel link: index.html?api=URL
+   ===================================================================== */
+const CONFIG = {
+  API_URL: "",
+  POLL_MS: 5000,
+};
+
+/* Cooperative consorziate (modificabile) */
+const COOPERATIVE = ["ARCA", "ALICE", "Progetto 5", "CAT", "Cepiss", "Coop21", "Elfo", "Selva", "Gaetano Barberi", "Eskimo", "Odissea"];
+const CHI = ["Una cooperativa", "Più cooperative insieme", "Consorzio", "Consorzio con supporto esterno"];
+
+const COLS = [
+  { id: "pool", label: "Da collocare", sub: "da posizionare", full: "Da collocare" },
+  { id: "s", label: "Subito", sub: "0–6 mesi", full: "Subito (0–6 mesi)" },
+  { id: "d", label: "Dopo", sub: "6–18 mesi", full: "Dopo (6–18 mesi)" },
+  { id: "p", label: "Più avanti", sub: "oltre 18 mesi", full: "Più avanti (oltre 18 mesi)" },
+  { id: "nf", label: "Non fattibile", sub: "o da ripensare", full: "Non fattibile / da ripensare" },
+];
+const RANKED = new Set(["s", "d", "p"]);
+
+const META = "Metropoli diventa un Consorzio di cui le cooperative hanno bisogno. Il Consorzio svolge stabilmente funzioni che generano valore per le cooperative e che le singole non possono svolgere efficacemente da sole.";
+
+const IMPACTS = [
+  {
+    id: "persone", n: 1, short: "Persone",
+    title: "Lavorare nella cooperazione sociale torna attrattivo",
+    stmt: "Le cooperative riescono ad attrarre, trattenere e sviluppare persone e competenze, garantendo ricambio generazionale e prospettive professionali.",
+    C: [
+      "Le cooperative riescono a rispondere ai bisogni, cause del turnover e aspettative delle persone.",
+      "Riescono a costruire condizioni organizzative e percorsi professionali più attrattivi.",
+      "Le esperienze efficaci sviluppate dalle singole cooperative diventano patrimonio comune.",
+      "Il sistema consortile acquisisce maggiore capacità di rappresentare verso l'esterno i problemi strutturali del lavoro sociale.",
+    ],
+    F: [
+      "Sviluppare una funzione condivisa di gestione delle risorse umane e di coordinamento di piani di welfare aziendale condivisi tra le cooperative",
+      "Sviluppare e diffondere modelli organizzativi capaci di migliorare la qualità e l'attrattività del lavoro",
+      "Sviluppare e mettere in comune competenze e professionalità strategiche",
+      "Costruire una capacità comune di rappresentanza sulle condizioni e sul valore del lavoro sociale",
+    ],
+  },
+  {
+    id: "pa", n: 2, short: "PA e politiche",
+    title: "Le cooperative diventano partner riconosciuti della PA",
+    stmt: "Le cooperative contribuiscono alla definizione delle politiche e delle risposte territoriali, anziché intervenire prevalentemente come esecutrici di servizi definiti dalla PA.",
+    C: [
+      "Il sistema cooperativo dispone di evidenze proprie sui bisogni e sulle trasformazioni territoriali.",
+      "Si consolidano relazioni con PA e altri attori fondate anche sulla produzione di conoscenza, non soltanto sulla gestione dei servizi.",
+      "Crescono le competenze necessarie per utilizzare realmente coprogrammazione e coprogettazione.",
+    ],
+    F: [
+      "Produrre, raccogliere e interpretare conoscenza per orientare le scelte del sistema cooperativo",
+      "Costruire una capacità stabile di rappresentanza e interlocuzione strategica con la PA",
+    ],
+  },
+  {
+    id: "nuove", n: 3, short: "Nuove risposte",
+    title: "Le cooperative sviluppano risposte nuove e sostenibili ai bisogni emergenti",
+    stmt: "Le cooperative riescono a intercettare bisogni emergenti e trasformarli in nuovi servizi e modelli economicamente sostenibili e replicabili.",
+    C: [
+      "Le cooperative sviluppano capacità di ricerca, progettazione e sviluppo di nuovi servizi anche rivolti alla domanda privata, tenendo insieme sostenibilità economica, capacità di investimento e vincoli normativi.",
+      "Le esperienze e le sperimentazioni sviluppate nei diversi territori vengono messe in comune e, quando efficaci, possono essere adattate e replicate da altre cooperative.",
+    ],
+    F: [
+      "Sviluppare una funzione consortile di ricerca, analisi e progettazione capace di intercettare i bisogni emergenti, valutarne la fattibilità e accompagnare lo sviluppo di nuovi servizi (si appoggia sulla funzione di conoscenza dell'area PA)",
+      "Coordinare strategicamente le cooperative intorno a opportunità, scadenze e linee comuni di sviluppo",
+    ],
+  },
+];
+
+/* Azioni dalla matrice (Matrice_azioni_risorse_Metropoli.xlsx, 14/10):
+   [impatto, n. cambiamento di medio periodo, n. capacità/funzione, testo] */
+const SEED_ACTIONS = [
+  ["persone", 1, 1, "Avviare mappatura fra le consorziate sul tema"],
+  ["persone", 2, 2, "Studiare le pratiche organizzative più efficaci già presenti nelle cooperative e favorirne l'adattamento e la diffusione."],
+  ["persone", 2, 2, "Sperimentare e promuovere modalità organizzative che favoriscano la conciliazione vita-lavoro, a partire dai servizi domiciliari e dal riconoscimento dei tempi di spostamento."],
+  ["persone", 3, 3, "Costruire percorsi formativi condivisi per coordinatori e responsabili di area (anche su valutazione e percorsi di carriera trasversali a più cooperative)."],
+  ["persone", 3, 3, "Esplorare forme di condivisione e impiego trasversale tra cooperative di alcune professionalità e competenze."],
+  ["persone", 4, 4, "Sviluppare un'azione politica sul rinnovo e sull'adeguamento del CCNL, anche rispetto ai trattamenti previsti per funzioni equivalenti nella PA, anche in alleanza con altre organizzazioni."],
+  ["persone", 4, 4, "Costruire azioni di comunicazione e interlocuzione istituzionale capaci di rappresentare il valore, la qualità e l'attrattività del lavoro sociale e cooperativo."],
+  ["persone", 4, 4, "Interloquire con gli enti committenti per il riconoscimento economico e organizzativo di condizioni di lavoro sostenibili, compreso il riconoscimento nei servizi delle modalità che favoriscono la conciliazione."],
+  ["pa", 1, 1, "Analizzare le ricerche esistenti e sviluppare attività di ricerca su bisogni, servizi e trasformazioni del territorio."],
+  ["pa", 1, 1, "Raccogliere e sistematizzare materiali e informazioni provenienti dalle cooperative."],
+  ["pa", 1, 1, "Organizzare momenti di restituzione e approfondimento, traducendo le evidenze raccolte in possibili linee di sviluppo."],
+  ["pa", 1, 1, "Portare nelle sedi di confronto analisi ed evidenze costruite insieme alle cooperative."],
+  ["pa", 2, 2, "Costruire un'interlocuzione continuativa con gli enti, anticipando di circa 12 mesi le scadenze delle gare per condividere punti di forza, criticità e possibili evoluzioni dei servizi."],
+  ["pa", 3, 2, "Garantire una presenza consortile competente e continuativa nei luoghi di confronto con gli enti (anche con cooperative delegate al posto del consorzio)."],
+  ["nuove", 1, 1, "Costituire un team dedicato per l'Innovation Lab (investire su risorse umane o designare persone nelle cooperative) e selezionare le figure necessarie. Al workshop: «non è possibile senza una strategia»."],
+  ["nuove", 1, 1, "Modificare il regolamento consortile per disciplinare la nuova funzione."],
+  ["nuove", 1, 1, "Definire il budget dedicato e i criteri di ripartizione dei costi tra le cooperative."],
+  ["nuove", 1, 1, "Attivare competenze specialistiche interne ed esterne: service design, accesso al credito, fundraising, business planning, ricerca di immobili."],
+  ["nuove", 1, 1, "Ricercare finanziamenti per ricerca e sviluppo."],
+  ["nuove", 1, 1, "Individuazione di un primo progetto pilota consortile (nuovo servizio)."],
+  ["nuove", 2, 2, "Creare e alimentare uno strumento condiviso di mappatura di gare, scadenze, opportunità e nuovi servizi."],
+  ["nuove", 2, 2, "Confrontarsi preventivamente sulla partecipazione a gare e bandi, individuando possibili sinergie tra cooperative."],
+  ["nuove", 2, 2, "Alimentare una pianificazione strategica consortile sulle opportunità e sulle aree di sviluppo."],
+];
+
+/* ===================================================================== */
+const IMP = Object.fromEntries(IMPACTS.map(i => [i.id, i]));
+const COL = Object.fromEntries(COLS.map(c => [c.id, c]));
+const LS = "metropoli-board:v1:";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(LS + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(LS + k, JSON.stringify(v)); } catch (e) { } },
+  del(k) { try { localStorage.removeItem(LS + k); } catch (e) { } },
+};
+const FIELDS = ["text", "risorse", "chi", "coop", "figure", "esterno", "note", "c", "f"];
+
+function seedCards() {
+  const counters = {};
+  return SEED_ACTIONS.map(([imp, c, f, text]) => {
+    counters[imp] = (counters[imp] || 0) + 1;
+    return blankCard({ id: `${imp}-${String(counters[imp]).padStart(2, "0")}`, imp, c, f, text, orig: text, pos: counters[imp] - 1 });
+  });
+}
+function blankCard(o) {
+  return Object.assign({ id: "", imp: "persone", col: "pool", pos: 0, text: "", c: 0, f: 0, risorse: "", chi: "", coop: [], figure: "", esterno: "", note: "", orig: "", added: false, deleted: false, upd: "" }, o);
+}
+const cText = c => (c.c && IMP[c.imp].C[c.c - 1]) || "";
+const fText = c => (c.f && IMP[c.imp].F[c.f - 1]) || "";
+
+/* ---------- card <-> riga del Foglio */
+function toRow(c) {
+  return {
+    id: c.id, impatto: IMP[c.imp] ? IMP[c.imp].short : c.imp, colonna: (COL[c.col] || COL.pool).full, posizione: String(c.pos),
+    azione: c.text, cambiamento: c.c ? `${c.c} · ${cText(c)}` : "", capacita: c.f ? `${c.f} · ${fText(c)}` : "",
+    risorse_oggi: c.risorse, chi_puo_farla: c.chi, cooperative: (c.coop || []).join("; "), figure: c.figure,
+    esterno: c.esterno, note: c.note, testo_originale: c.orig, aggiunta: c.added ? "sì" : "", eliminata: c.deleted ? "sì" : "",
+  };
+}
+function fromRow(r) {
+  const imp = (IMPACTS.find(i => i.short === r.impatto || i.id === r.impatto) || IMPACTS[0]).id;
+  const col = (COLS.find(c => c.full === r.colonna || c.id === r.colonna || c.label === r.colonna) || COL.pool).id;
+  const lead = v => { const m = String(v || "").match(/^\D*(\d+)/); return m ? parseInt(m[1], 10) : 0; };
+  return blankCard({
+    id: String(r.id), imp, col, pos: Number(r.posizione) || 0, text: r.azione || "", c: lead(r.cambiamento), f: lead(r.capacita),
+    risorse: r.risorse_oggi || "", chi: r.chi_puo_farla || "", coop: String(r.cooperative || "").split(";").map(s => s.trim()).filter(Boolean),
+    figure: r.figure || "", esterno: r.esterno || "", note: r.note || "", orig: r.testo_originale || "",
+    added: r.aggiunta === "sì", deleted: r.eliminata === "sì", upd: r.aggiornato || "",
+  });
+}
+
+/* ---------- stato */
+const S = {
+  cards: new Map(), pending: new Map(), rev: 0,
+  imp: store.get("imp", "persone"), dragging: false, justDragged: 0,
+  editing: null, draft: null, unsavedNew: null,
+  mode: "local", online: null, saving: false, lastSync: null,
+};
+const CLIENT_ID = store.get("client", null) || (() => { const id = "PC-" + Math.random().toString(36).slice(2, 6).toUpperCase(); store.set("client", id); return id; })();
+
+function apiUrl() {
+  const q = new URLSearchParams(location.search).get("api");
+  if (q) { store.set("api", q); return q; }
+  return CONFIG.API_URL || store.get("api", "") || "";
+}
+const API = apiUrl();
+S.mode = API ? "remote" : "local";
+
+function persist() {
+  store.set("cards", [...S.cards.values()].filter(c => c.id !== S.unsavedNew));
+  store.set("pending", [...S.pending.entries()]);
+}
+function visible(imp) { return [...S.cards.values()].filter(c => c.imp === imp && !c.deleted); }
+function inCol(imp, col) { return visible(imp).filter(c => c.col === col).sort((a, b) => a.pos - b.pos || a.id.localeCompare(b.id)); }
+function mark(id) { S.rev += 1; S.pending.set(id, S.rev); }
+function touch(card) { mark(card.id); S.cards.set(card.id, card); persist(); scheduleSave(); }
+
+/* ---------- rete */
+async function apiList() {
+  const r = await fetch(API + (API.includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || "errore");
+  return j;
+}
+async function apiPost(action, cards) {
+  const r = await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action, client: CLIENT_ID, cards }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || "errore");
+  return j;
+}
+function mergeRemote(rows) {
+  const remoteIds = new Set();
+  let changed = false;
+  rows.forEach(r => {
+    const c = fromRow(r);
+    remoteIds.add(c.id);
+    if (S.pending.has(c.id)) return;
+    const old = S.cards.get(c.id);
+    if (!old || JSON.stringify(toRow(old)) !== JSON.stringify(toRow(c))) { S.cards.set(c.id, c); changed = true; }
+  });
+  [...S.cards.keys()].forEach(id => {
+    if (!remoteIds.has(id) && !S.pending.has(id) && id !== S.editing) { S.cards.delete(id); changed = true; }
+  });
+  if (changed) persist();
+  return changed;
+}
+async function ensureSeeded(rows) {
+  if (rows.length) return rows;
+  const s = await apiPost("seed", seedCards().map(toRow));
+  return s.cards;
+}
+let saveTimer = null;
+function scheduleSave(delay = 500) {
+  if (S.mode !== "remote") { setStatus(); return; }
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flush, delay);
+  setStatus();
+}
+async function flush() {
+  if (S.mode !== "remote" || S.saving || S.pending.size === 0) return;
+  S.saving = true; setStatus();
+  const sent = [...S.pending.entries()];
+  try {
+    const j = await apiPost("upsert", sent.map(([id]) => S.cards.get(id)).filter(Boolean).map(toRow));
+    sent.forEach(([id, rev]) => { if (S.pending.get(id) === rev) S.pending.delete(id); });
+    S.online = true; S.lastSync = new Date();
+    const changed = mergeRemote(j.cards);
+    S.saving = false;
+    persist();
+    if (changed) refresh(); else { renderTabs(); setStatus(); }
+    if (S.pending.size) scheduleSave(200);
+  } catch (e) { S.saving = false; S.online = false; setStatus(); }
+}
+async function poll() {
+  if (S.mode !== "remote") return;
+  if (S.pending.size) { await flush(); return; }
+  if (S.saving || S.dragging) return;
+  try {
+    const j = await apiList();
+    const rows = await ensureSeeded(j.cards);
+    S.online = true; S.lastSync = new Date();
+    if (S.pending.size || S.dragging || S.saving) { setStatus(); return; }
+    if (mergeRemote(rows)) refresh(); else setStatus();
+  } catch (e) { S.online = false; setStatus(); }
+}
+
+/* ---------- stato del salvataggio */
+function setStatus() {
+  const el = $("#status"), t = $("#statusText");
+  el.className = "status";
+  const hhmm = d => d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  if (S.mode === "local") { el.classList.add("local"); t.textContent = "Modalità locale · dati salvati in questo browser"; return; }
+  if (S.online === false) { el.classList.add("off"); t.textContent = S.pending.size ? `Non collegato · ${S.pending.size} modifiche in attesa, salvate su questo PC` : "Non collegato · nuovo tentativo in corso"; return; }
+  if (S.saving || S.pending.size) { el.classList.add("saving"); t.textContent = "Salvataggio…"; return; }
+  if (S.lastSync) { el.classList.add("ok"); t.textContent = "Salvato · " + hhmm(S.lastSync); return; }
+  t.textContent = "Collegamento…";
+}
+let toastT;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2600); }
+
+/* ---------- rendering */
+function renderTabs() {
+  $("#tabs").innerHTML = IMPACTS.map(i => {
+    const all = visible(i.id), placed = all.filter(c => c.col !== "pool").length;
+    return `<button class="tab ${i.id === S.imp ? "on" : ""}" data-imp="${i.id}"><span class="n">${i.n}</span>${esc(i.short)}<span class="prog">${placed}/${all.length} collocate</span></button>`;
+  }).join("");
+}
+function renderHead() {
+  const i = IMP[S.imp];
+  $("#metaText").textContent = META;
+  $("#iEyebrow").textContent = `Impatto ${i.n} · ${i.short}`;
+  $("#iTitle").textContent = i.title;
+  $("#iStmt").textContent = i.stmt;
+}
+function detailsHTML(c) {
+  const ln = (k, v) => v ? `<div><b>${k}</b>${esc(v)}</div>` : "";
+  const who = [c.coop.join(", "), c.figure].filter(Boolean).join(" · ");
+  const body = ln("Risorse a disposizione oggi", c.risorse) + ln("Chi può farla", c.chi) + ln("Cooperative / figure", who) +
+    ln("Da reperire all'esterno", c.esterno) + ln(c.col === "nf" ? "Perché / come ripensarla" : "Note", c.note);
+  return body ? `<div class="det">${body}</div>` : "";
+}
+function textEdited(c) { return !c.added && c.orig && c.text.trim() !== c.orig.trim(); }
+function cardHTML(c, rank) {
+  const badges = (c.added ? `<span class="badge-new">nuova</span>` : "") + (textEdited(c) ? `<span class="badge-edit">testo modificato</span>` : "");
+  return `<div class="card ${rank ? "ranked" : ""}" data-id="${esc(c.id)}">
+    ${rank ? `<span class="rank">${rank}</span>` : ""}<span class="pen" aria-hidden="true">✎</span>
+    <div class="txt">${esc(c.text) || "<em>(senza testo)</em>"}</div>
+    ${detailsHTML(c)}
+    ${badges ? `<div class="foot">${badges}</div>` : ""}
+  </div>`;
+}
+function editHTML(c, d, rank) {
+  const i = IMP[c.imp];
+  const ta = (f, label, ph = "") => `<div class="field"><label for="e-${f}">${label}</label><textarea id="e-${f}" data-f="${f}" rows="2" placeholder="${esc(ph)}">${esc(d[f])}</textarea></div>`;
+  return `<div class="card editing ${rank ? "ranked" : ""}" data-id="${esc(c.id)}">
+    ${rank ? `<span class="rank">${rank}</span>` : ""}
+    <div class="ed-lab" ${rank ? 'style="padding-left:16px"' : ""}>Modifica azione</div>
+    ${ta("text", "Azione")}
+    ${textEdited(Object.assign({}, c, { text: d.text })) ? `<div class="orig" style="margin:-4px 0 9px">Testo originale: ${esc(c.orig)} · <a href="#" data-act="restore">ripristina</a></div>` : ""}
+    ${ta("risorse", "Risorse a disposizione oggi", "Chi fa già cosa, nelle cooperative o nel consorzio")}
+    <div class="field"><span class="lbl">Chi può farla</span><div class="seg">${CHI.map(x => `<button type="button" data-chi="${esc(x)}" class="${d.chi === x ? "on" : ""}">${esc(x)}</button>`).join("")}</div></div>
+    <div class="field"><span class="lbl">Quali cooperative</span><div class="chips">${COOPERATIVE.map(x => `<button type="button" data-coop="${esc(x)}" class="${d.coop.includes(x) ? "on" : ""}">${esc(x)}</button>`).join("")}</div></div>
+    <div class="field"><label for="e-figure">Figure / altri soggetti</label><input id="e-figure" data-f="figure" value="${esc(d.figure)}" placeholder="es. responsabili RU, struttura consortile"></div>
+    ${ta("esterno", "Cosa va reperito all'esterno", "Competenze, finanziamenti, partner…")}
+    ${ta("note", c.col === "nf" ? "Perché non è fattibile / come ripensarla" : "Note e condizioni")}
+    <div class="refs-sel">
+      <div class="field"><label for="e-c">Cambiamento di medio periodo</label><select id="e-c" data-f="c"><option value="0">—</option>${i.C.map((t, k) => `<option value="${k + 1}" ${d.c === k + 1 ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></div>
+      <div class="field"><label for="e-f">Capacità / funzione da costruire</label><select id="e-f" data-f="f"><option value="0">—</option>${i.F.map((t, k) => `<option value="${k + 1}" ${d.f === k + 1 ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></div>
+    </div>
+    <div class="ed-actions">
+      <button class="btn dark sm" data-act="save" title="Ctrl+Invio">Salva</button>
+      <button class="btn ghost sm" data-act="cancel">Annulla</button>
+      <span class="grow"></span>
+      <button class="btn ghost sm" data-act="del">Elimina</button>
+      <span class="del-confirm">Eliminare l'azione? <button class="btn dark sm" data-act="del-yes">Sì, elimina</button><button class="btn ghost sm" data-act="del-no">No</button></span>
+    </div>
+  </div>`;
+}
+function autosize(el) { el.style.height = "auto"; el.style.height = (el.scrollHeight + 2) + "px"; }
+
+let sortables = [];
+function renderBoard() {
+  const b = $("#board");
+  const scrolls = {};
+  b.querySelectorAll(".list").forEach(l => { scrolls[l.dataset.col] = l.scrollTop; });
+  const keepImp = b.dataset.imp === S.imp;
+  b.dataset.imp = S.imp;
+  // il post-it in modifica viene conservato così com'è (testo, cursore, focus)
+  const keep = S.editing ? b.querySelector(".card.editing") : null;
+  const act = document.activeElement;
+  const focusInKeep = keep && keep.contains(act) ? { el: act, s: act.selectionStart, e: act.selectionEnd } : null;
+  if (keep) keep.remove();
+  b.innerHTML = COLS.map(col => {
+    const cards = inCol(S.imp, col.id);
+    return `<section class="col" data-col="${col.id}">
+      <div class="col-h"><span class="mark"></span><span class="lab">${col.label}</span><span class="sub">${col.sub}</span><span class="cnt">${cards.length}</span></div>
+      <div class="list" data-col="${col.id}">${cards.map((c, k) => {
+        const rank = RANKED.has(col.id) ? k + 1 : 0;
+        if (c.id === S.editing) return keep ? `<div data-slot="${esc(c.id)}"></div>` : editHTML(c, S.draft, rank);
+        return cardHTML(c, rank);
+      }).join("") || `<div class="empty-hint">${col.id === "pool" ? "Tutte le azioni sono state collocate." : "Trascina qui le azioni"}</div>`}</div>
+      ${col.id === "pool" ? `<div class="col-f"><button class="btn ghost" id="addBtn">+ Nuova azione</button></div>` : ""}
+    </section>`;
+  }).join("");
+  if (keep) {
+    const slot = b.querySelector(`[data-slot="${CSS.escape(S.editing)}"]`);
+    if (slot) {
+      slot.replaceWith(keep);
+      const c = S.cards.get(S.editing), r = keep.querySelector(".rank");
+      if (c && r) r.textContent = inCol(S.imp, c.col).findIndex(x => x.id === c.id) + 1;
+      if (focusInKeep) { focusInKeep.el.focus({ preventScroll: true }); try { focusInKeep.el.setSelectionRange(focusInKeep.s, focusInKeep.e); } catch (e) { } }
+    }
+  }
+  if (S.editing && !b.querySelector(".card.editing")) {
+    const c = S.cards.get(S.editing);
+    if (!c || c.deleted || c.imp !== S.imp) { if (c && c.deleted) toast("L'azione in modifica è stata eliminata da un altro PC"); S.editing = null; S.draft = null; store.del("draft"); }
+  }
+  b.querySelectorAll(".card.editing textarea").forEach(autosize);
+  sortables.forEach(s => s.destroy());
+  sortables = [...b.querySelectorAll(".list")].map(list => Sortable.create(list, {
+    group: "board", animation: 140, draggable: ".card", filter: ".editing", preventOnFilter: false,
+    forceFallback: true, fallbackTolerance: 4,
+    ghostClass: "sortable-ghost", chosenClass: "sortable-chosen", scroll: true, bubbleScroll: true,
+    onStart: () => { S.dragging = true; hidePop(); },
+    onEnd: () => { S.dragging = false; S.justDragged = Date.now(); applyDomOrder(); },
+  }));
+  if (keepImp) b.querySelectorAll(".list").forEach(l => { if (scrolls[l.dataset.col]) l.scrollTop = scrolls[l.dataset.col]; });
+}
+function applyDomOrder() {
+  let changed = 0;
+  document.querySelectorAll("#board .list").forEach(list => {
+    const col = list.dataset.col;
+    [...list.querySelectorAll(".card")].forEach((el, k) => {
+      const c = S.cards.get(el.dataset.id);
+      if (!c || c.id === S.unsavedNew) return;
+      if (c.col !== col || c.pos !== k) { S.cards.set(c.id, Object.assign({}, c, { col, pos: k })); mark(c.id); changed++; }
+    });
+  });
+  if (changed) { persist(); scheduleSave(150); }
+  refresh();
+}
+function refresh() { renderTabs(); if (!S.dragging) renderBoard(); setStatus(); }
+function renderAll() { renderHead(); renderTabs(); renderBoard(); setStatus(); }
+
+/* ---------- modifica sul post-it */
+function draftOf(c) { const d = {}; FIELDS.forEach(f => d[f] = Array.isArray(c[f]) ? c[f].slice() : c[f]); return d; }
+function draftChanged() {
+  const c = S.cards.get(S.editing); if (!c || !S.draft) return false;
+  if (S.editing === S.unsavedNew) return true;
+  return FIELDS.some(f => JSON.stringify(c[f]) !== JSON.stringify(S.draft[f]));
+}
+function saveDraftLocal() { if (S.editing) store.set("draft", { id: S.editing, draft: S.draft, isNew: S.editing === S.unsavedNew, card: S.editing === S.unsavedNew ? S.cards.get(S.editing) : null }); }
+function startEdit(id, focusField) {
+  if (S.editing && S.editing !== id) commitEdit(true);
+  const c = S.cards.get(id); if (!c) return;
+  hidePop();
+  S.editing = id; S.draft = draftOf(c);
+  saveDraftLocal();
+  renderBoard();
+  const el = document.querySelector(`#board .card[data-id="${CSS.escape(id)}"]`);
+  if (el) {
+    el.scrollIntoView({ block: "nearest" });
+    const f = el.querySelector(focusField ? `[data-f="${focusField}"]` : '[data-f="risorse"]');
+    if (f) { f.focus({ preventScroll: true }); if (focusField === "text") f.select(); }
+  }
+}
+function commitEdit(silent) {
+  const id = S.editing; if (!id) return;
+  const c = S.cards.get(id);
+  if (S.draft && !S.draft.text.trim()) {
+    if (id === S.unsavedNew) { cancelEdit(); return; }
+    toast("Il testo dell'azione non può essere vuoto"); return;
+  }
+  const changed = draftChanged();
+  if (c && changed) {
+    const d = S.draft;
+    const n = Object.assign({}, c, { text: d.text.trim(), risorse: d.risorse.trim(), chi: d.chi, coop: d.coop, figure: d.figure.trim(), esterno: d.esterno.trim(), note: d.note.trim(), c: d.c, f: d.f });
+    if (id === S.unsavedNew) S.unsavedNew = null;
+    touch(n);
+  }
+  S.editing = null; S.draft = null; store.del("draft");
+  renderTabs(); renderBoard();
+  if (!silent) toast(changed ? "Modifiche salvate" : "Nessuna modifica");
+}
+function cancelEdit() {
+  const id = S.editing;
+  if (id && id === S.unsavedNew) { S.cards.delete(id); S.unsavedNew = null; }
+  S.editing = null; S.draft = null; store.del("draft");
+  renderTabs(); renderBoard();
+}
+function addCard() {
+  if (S.editing) commitEdit(true);
+  const id = `${S.imp}-n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 4)}`;
+  const c = blankCard({ id, imp: S.imp, col: "pool", pos: inCol(S.imp, "pool").length, text: "", added: true });
+  S.cards.set(id, c); S.unsavedNew = id;
+  startEdit(id, "text");
+}
+
+/* ---------- hover: cambiamento e funzione */
+let popT = null, popFor = null;
+function showPop(card) {
+  const c = S.cards.get(card.dataset.id); if (!c) return;
+  const p = $("#pop");
+  const blk = (k, v) => `<div class="blk"><b>${k}</b>${v ? esc(v) : '<span class="none">non indicato</span>'}</div>`;
+  p.innerHTML = blk("Cambiamento di medio periodo (2–5 anni)", cText(c)) + blk("Capacità / funzione da costruire (1–2 anni)", fText(c));
+  const r = card.getBoundingClientRect(), W = 340, gap = 10;
+  let x = r.right + gap; if (x + W > window.innerWidth - 8) x = r.left - W - gap;
+  if (x < 8) x = Math.min(window.innerWidth - W - 8, r.left);
+  p.style.left = x + "px";
+  p.style.top = "0px"; p.classList.add("on");
+  const h = p.offsetHeight;
+  p.style.top = Math.max(8, Math.min(r.top, window.innerHeight - h - 8)) + "px";
+}
+function hidePop() { clearTimeout(popT); popFor = null; $("#pop").classList.remove("on"); }
+document.addEventListener("mouseover", e => {
+  const card = e.target.closest("#board .card:not(.editing)");
+  if (!card) { if (popFor) hidePop(); return; }
+  if (card === popFor || S.dragging) return;
+  hidePop(); popFor = card;
+  popT = setTimeout(() => { if (popFor === card && !S.dragging) showPop(card); }, 350);
+});
+document.addEventListener("scroll", hidePop, true);
+
+/* ---------- eventi */
+document.addEventListener("click", e => {
+  const tab = e.target.closest(".tab");
+  if (tab) { if (S.editing) commitEdit(true); S.imp = tab.dataset.imp; store.set("imp", S.imp); renderAll(); return; }
+  if (e.target.id === "addBtn") { addCard(); return; }
+  const menuBtn = e.target.closest("#exportBtn");
+  if (menuBtn) { $("#exportMenu").classList.toggle("open"); return; }
+  const exp = e.target.closest("[data-exp]");
+  if (exp) { $("#exportMenu").classList.remove("open"); doExport(exp.dataset.exp); return; }
+  if (!e.target.closest("#exportMenu")) $("#exportMenu").classList.remove("open");
+
+  const card = e.target.closest("#board .card");
+  if (!card) return;
+  if (!card.classList.contains("editing")) {
+    if (Date.now() - S.justDragged < 300) return;
+    startEdit(card.dataset.id); return;
+  }
+  // controlli dentro il post-it in modifica
+  const chi = e.target.closest("[data-chi]");
+  if (chi) { S.draft.chi = S.draft.chi === chi.dataset.chi ? "" : chi.dataset.chi; card.querySelectorAll("[data-chi]").forEach(b => b.classList.toggle("on", b.dataset.chi === S.draft.chi)); saveDraftLocal(); return; }
+  const coop = e.target.closest("[data-coop]");
+  if (coop) { const v = coop.dataset.coop, has = S.draft.coop.includes(v); S.draft.coop = COOPERATIVE.filter(x => x === v ? !has : S.draft.coop.includes(x)).concat(S.draft.coop.filter(x => !COOPERATIVE.includes(x))); coop.classList.toggle("on", !has); saveDraftLocal(); return; }
+  const a = e.target.closest("[data-act]");
+  if (!a) return;
+  e.preventDefault();
+  const act = a.dataset.act;
+  if (act === "save") commitEdit();
+  else if (act === "cancel") cancelEdit();
+  else if (act === "del") { a.style.display = "none"; card.querySelector(".del-confirm").classList.add("on"); }
+  else if (act === "del-no") { card.querySelector(".del-confirm").classList.remove("on"); card.querySelector('[data-act="del"]').style.display = ""; }
+  else if (act === "del-yes") {
+    const id = S.editing;
+    if (id === S.unsavedNew) { cancelEdit(); return; }
+    const c = S.cards.get(id); S.editing = null; S.draft = null; store.del("draft");
+    touch(Object.assign({}, c, { deleted: true })); renderTabs(); renderBoard(); toast("Azione eliminata · resta nel registro del Foglio");
+  }
+  else if (act === "restore") { const c = S.cards.get(S.editing); S.draft.text = c.orig; const ta = card.querySelector('[data-f="text"]'); ta.value = c.orig; autosize(ta); a.closest(".orig").remove(); saveDraftLocal(); }
+});
+document.addEventListener("input", e => {
+  const f = e.target.dataset && e.target.dataset.f;
+  if (!f || !S.editing || !e.target.closest(".card.editing")) return;
+  S.draft[f] = (f === "c" || f === "f") ? (parseInt(e.target.value, 10) || 0) : e.target.value;
+  if (e.target.tagName === "TEXTAREA") autosize(e.target);
+  saveDraftLocal();
+});
+document.addEventListener("keydown", e => {
+  if (!S.editing) return;
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); commitEdit(); }
+  else if (e.key === "Escape") { if (!draftChanged()) cancelEdit(); else toast("Ci sono modifiche: premi Salva o Annulla"); }
+});
+window.addEventListener("beforeunload", e => { if (S.editing && draftChanged()) { saveDraftLocal(); } });
+$("#importFile").addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    const cards = (data.cards || []).map(x => blankCard(x)).filter(x => x.id);
+    if (!cards.length) throw new Error("vuoto");
+    if (!confirm(`Ripristinare la board dalla copia del ${data.exportedAt || "file"}? Lo stato attuale verrà sostituito per tutti (resta comunque nel registro del Foglio).`)) return;
+    S.editing = null; S.draft = null; S.unsavedNew = null; store.del("draft");
+    S.cards = new Map(cards.map(c => [c.id, c]));
+    S.pending.clear(); persist();
+    if (S.mode === "remote") {
+      const j = await apiPost("replace", cards.map(toRow));
+      mergeRemote(j.cards); S.online = true; S.lastSync = new Date();
+    }
+    renderAll(); toast("Copia ripristinata");
+  } catch (err) { toast("File non valido"); }
+});
+
+/* ---------- esportazioni */
+function stamp() { const d = new Date(); const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; }
+function downloadBlob(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+const ORDER = ["s", "d", "p", "nf", "pool"];
+function orderedCards(imp) { return ORDER.flatMap(col => inCol(imp, col)); }
+async function doExport(kind) {
+  try {
+    if (S.editing && draftChanged()) { toast("Prima salva o annulla la modifica in corso"); return; }
+    if (S.editing) cancelEdit();
+    if (kind === "json") {
+      const data = { app: "metropoli-board", version: 1, exportedAt: new Date().toLocaleString("it-IT"), cards: [...S.cards.values()] };
+      downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), `Metropoli_board_backup_${stamp()}.json`);
+      return;
+    }
+    if (kind === "import") { $("#importFile").click(); return; }
+    if (kind === "xlsx") return await exportXlsx();
+    if (kind === "png-one") return await exportPng([S.imp]);
+    if (kind === "png-all") return await exportPng(IMPACTS.map(i => i.id));
+  } catch (err) { console.error(err); toast("Esportazione non riuscita"); }
+}
+async function exportXlsx() {
+  if (!window.ExcelJS) { toast("Libreria Excel non caricata: controlla la connessione"); return; }
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "LAMA Impresa Sociale";
+  const ws = wb.addWorksheet("Matrice", { views: [{ state: "frozen", ySplit: 3 }] });
+  const head = ["Impatto", "Cambiamento di medio periodo (2–5 anni)", "Capacità / funzione da costruire (1–2 anni)", "Azione", "Ordine", "Priorità nella colonna", "Risorse a disposizione oggi (chi fa già cosa)", "Chi può farla", "Quali cooperative / figure", "Cosa va reperito all'esterno", "Note e condizioni", "Testo originale (se modificato)", "Aggiunta al workshop"];
+  const widths = [16, 38, 38, 56, 22, 10, 40, 20, 30, 34, 34, 38, 11];
+  ws.columns = widths.map(w => ({ width: w }));
+  const F = (o = {}) => Object.assign({ name: "Arial", size: 10 }, o);
+  const thin = { style: "thin", color: { argb: "FFD1D1D1" } };
+  const box = { top: thin, left: thin, bottom: thin, right: thin };
+  ws.mergeCells(1, 1, 1, head.length);
+  ws.getCell(1, 1).value = "Consorzio Metropoli · Dalle azioni alle risorse";
+  ws.getCell(1, 1).font = F({ size: 14, bold: true });
+  ws.mergeCells(2, 1, 2, head.length);
+  ws.getCell(2, 1).value = "Meta impatto · " + META + "   —   Esportato il " + new Date().toLocaleString("it-IT");
+  ws.getCell(2, 1).font = F({ size: 9, color: { argb: "FF54595F" } });
+  ws.getCell(2, 1).alignment = { wrapText: true, vertical: "top" };
+  ws.getRow(2).height = 28;
+  const hr = ws.getRow(3);
+  head.forEach((h, k) => {
+    const c = hr.getCell(k + 1);
+    c.value = h; c.font = F({ bold: true, color: { argb: "FFFFFFFF" } });
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: k >= 4 ? "FFFF5200" : "FF000000" } };
+    c.alignment = { wrapText: true, vertical: "middle" }; c.border = box;
+  });
+  hr.height = 32;
+  const colFill = { s: "FFFFC2A3", d: "FFFF8A52", p: "FFFF5200", nf: "FFEDEDEB", pool: "FFFFFFFF" };
+  IMPACTS.forEach(i => {
+    const band = ws.addRow([`IMPATTO ${i.n} · ${i.short.toUpperCase()} — ${i.title}. ${i.stmt}`]);
+    ws.mergeCells(band.number, 1, band.number, head.length);
+    band.getCell(1).font = F({ bold: true, color: { argb: "FFFFFFFF" } });
+    band.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF54595F" } };
+    band.getCell(1).alignment = { wrapText: true, vertical: "middle" };
+    band.height = 30;
+    orderedCards(i.id).forEach(c => {
+      const list = inCol(i.id, c.col);
+      const rank = RANKED.has(c.col) ? list.findIndex(x => x.id === c.id) + 1 : null;
+      const row = ws.addRow([
+        `${i.n} · ${i.short}`, cText(c), fText(c), c.text,
+        COL[c.col].full, rank, c.risorse, c.chi, [c.coop.join(", "), c.figure].filter(Boolean).join(" · "), c.esterno, c.note,
+        textEdited(c) ? c.orig : "", c.added ? "sì" : "",
+      ]);
+      row.eachCell({ includeEmpty: true }, (cell, k) => {
+        cell.font = F({ bold: k === 4 });
+        cell.alignment = { wrapText: true, vertical: "top", horizontal: k === 6 ? "center" : "left" };
+        cell.border = box;
+      });
+      row.getCell(5).fill = { type: "pattern", pattern: "solid", fgColor: { argb: colFill[c.col] } };
+      const longest = Math.max(...[c.text, c.risorse, c.esterno, c.note, cText(c), fText(c)].map((t, k) => Math.ceil(String(t).length / ([56, 40, 34, 34, 38, 38][k] * 1.1))));
+      row.height = Math.max(30, Math.min(160, longest * 13 + 6));
+    });
+  });
+  ws.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: head.length } };
+  ws.pageSetup = { orientation: "landscape", paperSize: 8, fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+  const buf = await wb.xlsx.writeBuffer();
+  downloadBlob(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `Metropoli_matrice_azioni_risorse_${stamp()}.xlsx`);
+  toast("Matrice scaricata");
+}
+async function exportPng(imps) {
+  if (!window.html2canvas) { toast("Libreria immagini non caricata: controlla la connessione"); return; }
+  toast("Preparazione immagine…");
+  const root = $("#exportRoot");
+  const cols = COLS.filter(col => col.id !== "pool" || imps.some(imp => inCol(imp, "pool").length));
+  root.innerHTML = `<div class="ex-top"><div class="t">Consorzio Metropoli · Dalle azioni alle risorse</div><div class="d">LAMA · ${new Date().toLocaleString("it-IT", { dateStyle: "long", timeStyle: "short" })}</div></div>` +
+    imps.map(imp => {
+      const i = IMP[imp];
+      return `<section class="ex-imp">
+        <div class="eyebrow">Impatto ${i.n} · ${esc(i.short)}</div><h2>${esc(i.title)}</h2><p class="st">${esc(i.stmt)}</p>
+        <div class="ex-refs"><div><h4>Cambiamenti di medio periodo (2–5 anni)</h4><ul>${i.C.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>
+        <div><h4>Capacità / funzioni da costruire (1–2 anni)</h4><ul>${i.F.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div></div>
+        <div class="ex-board" style="grid-template-columns:repeat(${cols.length},1fr)">${cols.map(col => {
+          const cs = inCol(imp, col.id);
+          return `<div class="ex-col col" data-col="${col.id}"><div class="col-h"><span class="mark"></span><span class="lab">${col.label}</span><span class="sub">${col.sub}</span><span class="cnt">${cs.length}</span></div>
+            <div class="list">${cs.map((c, k) => cardHTML(c, RANKED.has(col.id) ? k + 1 : 0)).join("") || `<div class="empty-hint">—</div>`}</div></div>`;
+        }).join("")}</div>
+      </section>`;
+    }).join("");
+  root.querySelectorAll(".pen").forEach(x => x.remove());
+  await (document.fonts ? document.fonts.ready : Promise.resolve());
+  const canvas = await html2canvas(root, { scale: 1.5, backgroundColor: "#ffffff", logging: false, windowWidth: 2100 });
+  root.innerHTML = "";
+  canvas.toBlob(blob => { downloadBlob(blob, `Metropoli_board_${imps.length > 1 ? "tre_impatti" : imps[0]}_${stamp()}.png`); toast("Immagine scaricata"); }, "image/png");
+}
+
+/* ---------- avvio */
+function restoreDraft() {
+  const dr = store.get("draft", null);
+  if (!dr || !dr.id) return;
+  if (dr.isNew && dr.card) { S.cards.set(dr.id, blankCard(dr.card)); S.unsavedNew = dr.id; }
+  const c = S.cards.get(dr.id);
+  if (!c || c.deleted) { store.del("draft"); return; }
+  S.imp = c.imp; S.editing = dr.id; S.draft = Object.assign(draftOf(c), dr.draft);
+  setTimeout(() => toast("Ripresa la modifica non salvata"), 400);
+}
+async function init() {
+  const cached = store.get("cards", null);
+  const pend = store.get("pending", []);
+  if (cached && cached.length) S.cards = new Map(cached.map(c => [c.id, blankCard(c)]));
+  else S.cards = new Map(seedCards().map(c => [c.id, c]));
+  S.pending = new Map(pend);
+  S.rev = Math.max(0, ...pend.map(p => p[1]));
+  if (!IMP[S.imp]) S.imp = "persone";
+  restoreDraft();
+  renderAll();
+  if (S.mode === "local") {
+    const b = $("#banner"); b.classList.add("on");
+    b.innerHTML = "Modalità locale: le modifiche restano in questo browser. Per il salvataggio condiviso su Foglio Google incolla l'URL dell'app web in <code>CONFIG.API_URL</code> (vedi README).";
+    persist();
+    return;
+  }
+  try {
+    const j = await apiList();
+    const rows = await ensureSeeded(j.cards);
+    S.online = true; S.lastSync = new Date();
+    mergeRemote(rows);
+    renderAll();
+    if (S.pending.size) flush();
+  } catch (e) { S.online = false; setStatus(); }
+  setInterval(poll, CONFIG.POLL_MS);
+  window.addEventListener("online", () => poll());
+}
+init();
+</script>
+</body>
+</html>
