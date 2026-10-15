@@ -88,14 +88,17 @@ h1,h2{font-family:var(--ft);font-weight:700;margin:0;letter-spacing:-.02em;line-
 /* ---------- post-it */
 .card{background:var(--white);border:1px solid var(--border);padding:10px 11px 9px;cursor:grab;position:relative;user-select:none;transition:box-shadow .12s}
 .card:hover{box-shadow:0 2px 10px rgba(0,0,0,.09)}
-.card .pen{position:absolute;top:6px;right:7px;font-size:12px;color:var(--muted);opacity:0;transition:opacity .12s}
-.card:hover .pen{opacity:1}
+.card .pen-btn{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:7px;border:0;padding:0;background:var(--orange-3);color:var(--black);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .12s,transform .12s;z-index:2}
+.card .pen-btn svg{width:14px;height:14px;display:block}
+.card:hover .pen-btn,.card:focus-within .pen-btn{opacity:1;pointer-events:auto}
+.card .pen-btn:hover{transform:scale(1.08)}
+.card .pen-btn:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
 .card .rank{position:absolute;top:-1px;left:-1px;background:var(--black);color:var(--white);font-family:var(--ft);font-weight:700;font-size:11px;min-width:20px;height:20px;display:flex;align-items:center;justify-content:center}
 .card.ranked .txt{padding-left:16px}
-.card .txt{font-size:13px;line-height:1.35;padding-right:12px}
-.det{margin:8px 0 0;padding:7px 0 0;border-top:1px dashed var(--lgrey);display:flex;flex-direction:column;gap:4px}
-.det div{font-size:12px;line-height:1.35;color:#222}
-.det b{display:block;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--dgrey);margin-bottom:1px}
+.card .txt{font-size:13px;line-height:1.35;padding-right:24px}
+.det{margin:10px 0 0;padding:10px 0 0;border-top:1px dashed var(--lgrey);display:flex;flex-direction:column;gap:10px}
+.det div{font-size:12.5px;line-height:1.4;color:var(--black)}
+.det b{display:block;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#C43F00;margin-bottom:3px}
 .foot{display:flex;align-items:center;gap:6px;margin-top:7px;flex-wrap:wrap}
 .badge-new{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--white);background:var(--dgrey);padding:2px 5px}
 .badge-edit{font-size:10.5px;color:var(--muted)}
@@ -104,7 +107,7 @@ h1,h2{font-family:var(--ft);font-weight:700;margin:0;letter-spacing:-.02em;line-
 
 /* post-it in modifica */
 .card.editing{cursor:default;user-select:text;outline:2px solid var(--orange);outline-offset:-1px;box-shadow:0 6px 22px rgba(0,0,0,.14);padding:10px 11px 11px}
-.card.editing:hover .pen{opacity:0}
+.card.editing .pen-btn{display:none}
 .ed-lab{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange);margin-bottom:8px}
 .field{margin-bottom:9px}
 .field label,.field .lbl{display:block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;color:var(--dgrey)}
@@ -315,6 +318,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(LS + k, JSON.stringify(v)); } catch (e) { } },
   del(k) { try { localStorage.removeItem(LS + k); } catch (e) { } },
 };
+const PEN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
 const FIELDS = ["text", "risorse", "chi", "coop", "figure", "esterno", "note", "c", "f"];
 
 function seedCards() {
@@ -485,7 +489,7 @@ function textEdited(c) { return !c.added && c.orig && c.text.trim() !== c.orig.t
 function cardHTML(c, rank) {
   const badges = (c.added ? `<span class="badge-new">nuova</span>` : "") + (textEdited(c) ? `<span class="badge-edit">testo modificato</span>` : "");
   return `<div class="card ${rank ? "ranked" : ""}" data-id="${esc(c.id)}">
-    ${rank ? `<span class="rank">${rank}</span>` : ""}<span class="pen" aria-hidden="true">✎</span>
+    ${rank ? `<span class="rank">${rank}</span>` : ""}<button type="button" class="pen-btn" title="Modifica" aria-label="Modifica azione">${PEN_SVG}</button>
     <div class="txt">${esc(c.text) || "<em>(senza testo)</em>"}</div>
     ${detailsHTML(c)}
     ${badges ? `<div class="foot">${badges}</div>` : ""}
@@ -560,7 +564,7 @@ function renderBoard() {
   b.querySelectorAll(".card.editing textarea").forEach(autosize);
   sortables.forEach(s => s.destroy());
   sortables = [...b.querySelectorAll(".list")].map(list => Sortable.create(list, {
-    group: "board", animation: 140, draggable: ".card", filter: ".editing", preventOnFilter: false,
+    group: "board", animation: 140, draggable: ".card", filter: ".editing, .pen-btn", preventOnFilter: false,
     forceFallback: true, fallbackTolerance: 4,
     ghostClass: "sortable-ghost", chosenClass: "sortable-chosen", scroll: true, bubbleScroll: true,
     onStart: () => { S.dragging = true; hidePop(); },
@@ -674,12 +678,10 @@ document.addEventListener("click", e => {
   if (exp) { $("#exportMenu").classList.remove("open"); doExport(exp.dataset.exp); return; }
   if (!e.target.closest("#exportMenu")) $("#exportMenu").classList.remove("open");
 
-  const card = e.target.closest("#board .card");
+  const pen = e.target.closest("#board .pen-btn");
+  if (pen) { if (Date.now() - S.justDragged < 300) return; startEdit(pen.closest(".card").dataset.id); return; }
+  const card = e.target.closest("#board .card.editing");
   if (!card) return;
-  if (!card.classList.contains("editing")) {
-    if (Date.now() - S.justDragged < 300) return;
-    startEdit(card.dataset.id); return;
-  }
   // controlli dentro il post-it in modifica
   const chi = e.target.closest("[data-chi]");
   if (chi) { S.draft.chi = S.draft.chi === chi.dataset.chi ? "" : chi.dataset.chi; card.querySelectorAll("[data-chi]").forEach(b => b.classList.toggle("on", b.dataset.chi === S.draft.chi)); saveDraftLocal(); return; }
@@ -831,7 +833,7 @@ async function exportPng(imps) {
         }).join("")}</div>
       </section>`;
     }).join("");
-  root.querySelectorAll(".pen").forEach(x => x.remove());
+  root.querySelectorAll(".pen-btn").forEach(x => x.remove());
   await (document.fonts ? document.fonts.ready : Promise.resolve());
   const canvas = await html2canvas(root, { scale: 1.5, backgroundColor: "#ffffff", logging: false, windowWidth: 2100 });
   root.innerHTML = "";
