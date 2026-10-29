@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script>window.ExcelJS || document.write('<script src="https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js"><\/script>')</script>
 <style>
 :root{
   --black:#000;--orange:#FF5200;--orange-2:#FF8A52;--orange-3:#FFC2A3;--orange-t:#FFF1EA;
@@ -188,6 +190,7 @@ tr:hover .cell.off{border-color:var(--lgrey)}
   <div class="menu" id="exportMenu">
     <button class="btn dark" id="exportBtn" aria-haspopup="true">Esporta</button>
     <div class="menu-list" role="menu">
+      <button data-exp="xlsx">Excel formattato (tutte le viste)</button>
       <button data-exp="tsv">Copia tabella del piano (per Excel)</button>
       <button data-exp="json">Copia di sicurezza (JSON)</button>
       <button data-exp="import">Ripristina da copia di sicurezza…</button>
@@ -407,13 +410,217 @@ document.addEventListener("click",()=>menu.classList.remove("open"));
 const pp=document.getElementById("pastePanel");
 menu.querySelectorAll("[data-exp]").forEach(b=>b.addEventListener("click",()=>{
   const k=b.dataset.exp;menu.classList.remove("open");
-  if(k==="tsv")copyText(tsv(),"Tabella copiata: incollala in un foglio Excel");
+  if(k==="xlsx")exportXlsx().catch(err=>{console.error(err);toast("Esportazione non riuscita");});
+  else if(k==="tsv")copyText(tsv(),"Tabella copiata: incollala in un foglio Excel");
   else if(k==="json")copyText(JSON.stringify(S,null,1),"Copia di sicurezza copiata negli appunti");
   else if(k==="import"){showTab("plan");pp.hidden=false;document.getElementById("pasteArea").focus();}
   else if(k==="reset"){S={plan:JSON.parse(JSON.stringify(ORIGINAL))};try{localStorage.removeItem(KEY);}catch(e){}setStatus("Versione iniziale","local");renderPlan();toast("Ripristinata la versione iniziale");}
 }));
 document.getElementById("pasteCancel").addEventListener("click",()=>{pp.hidden=true;});
 document.getElementById("pasteOk").addEventListener("click",()=>{try{const p=JSON.parse(document.getElementById("pasteArea").value);if(!p.plan)throw 0;S=p;persist();renderPlan();pp.hidden=true;toast("Versione caricata");}catch(e){toast("JSON non valido");}});
+
+// ---------- Excel formattato (tutte le viste)
+function stamp(){const d=new Date();const p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;}
+function downloadBlob(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);}
+const XC={black:"FF000000",orange:"FFFF5200",o2:"FFFF8A52",o3:"FFFFC2A3",ot:"FFFFF1EA",dgrey:"FF54595F",lgrey:"FFD1D1D1",soft:"FFF7F7F5",white:"FFFFFFFF"};
+const xF=(o={})=>Object.assign({name:"Arial",size:10},o);
+const xFill=c=>({type:"pattern",pattern:"solid",fgColor:{argb:c}});
+const xThin={style:"thin",color:{argb:"FFD1D1D1"}};
+const xBox={top:xThin,left:xThin,bottom:xThin,right:xThin};
+const IMPN={1:"1 · Persone",2:"2 · PA e politiche",3:"3 · Nuove risposte"};
+const META_TXT="Metropoli diventa un Consorzio di cui le cooperative hanno bisogno. Il Consorzio svolge stabilmente funzioni che generano valore per le cooperative e che le singole non possono svolgere efficacemente da sole.";
+const PLAN_SHEET="3 Piano operativo";
+const PREF=`'${PLAN_SHEET}'!`;
+function colL(n){let s="";while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;}
+const r1=v=>Math.round((Number(v)||0)*10)/10;
+function xH(pairs,min){let l=1;pairs.forEach(([t,w])=>{String(t||"").split("\n").forEach(line=>{l=Math.max(l,Math.ceil(line.length/(w*1.1)));});});return Math.max(min||18,Math.min(170,l*13+6));}
+function xTitle(ws,title,sub,ncol){
+  ws.mergeCells(1,1,1,ncol);const a=ws.getCell(1,1);a.value=title;a.font=xF({size:14,bold:true});ws.getRow(1).height=22;
+  ws.mergeCells(2,1,2,ncol);const b=ws.getCell(2,1);b.value=sub;b.font=xF({size:9,color:{argb:XC.dgrey}});b.alignment={wrapText:true,vertical:"top"};ws.getRow(2).height=40;
+}
+function xHead(row,labels,orangeFrom){labels.forEach((h,k)=>{const c=row.getCell(k+1);c.value=h;c.font=xF({bold:true,color:{argb:XC.white}});c.fill=xFill(k+1>=orangeFrom?XC.orange:XC.black);c.alignment={wrapText:true,vertical:"middle"};c.border=xBox;});row.height=32;}
+function xBand(ws,r,text,ncol,color){ws.mergeCells(r,1,r,ncol);const c=ws.getCell(r,1);c.value=text;c.font=xF({bold:true,color:{argb:XC.white}});c.fill=xFill(color||XC.black);c.alignment={wrapText:true,vertical:"middle"};ws.getRow(r).height=26;}
+function xLayout(){ // righe del foglio piano, calcolate prima per i riferimenti degli altri fogli
+  const L={obj:{},sub:{}};let r=5;
+  S.plan.forEach(amb=>{r++;amb.obj.forEach(o=>{L.obj[o.id]={row:r,a:r+1,b:r+o.att.length};r+=1+o.att.length+o.fonte.length;});L.sub[amb.id]=r;r++;});
+  L.total=r+1;return L;
+}
+
+// ---- 1 Laboratorio
+function xSheetLab(wb){
+  const ws=wb.addWorksheet("1 Laboratorio",{views:[{state:"frozen",xSplit:1,ySplit:3}]});
+  const head=["Cod.","Impatto","Cambiamento di medio periodo (2–5 anni)","Capacità / funzione da costruire (1–2 anni)","Azione","Ordine","Priorità nella colonna","Risorse a disposizione oggi (chi fa già cosa)","Chi può farla","Quali cooperative / figure","Cosa va reperito all'esterno","Note e condizioni","Aggiunta al workshop"];
+  const W=[7,16,38,38,56,20,10,40,20,30,34,34,11];
+  ws.columns=W.map(w=>({width:w}));
+  xTitle(ws,"Consorzio Metropoli · Com'era: le azioni del laboratorio","Le azioni come le hanno individuate e collocate i consorziati, per impatto. Ordine: Subito 0–6 mesi · Dopo 6–18 mesi · Più avanti oltre 18 mesi. Esportato il "+new Date().toLocaleString("it-IT"),head.length);
+  xHead(ws.getRow(3),head,6);
+  const ordFill=[XC.o3,XC.o2,XC.orange];
+  const all=[...DATA.ACT.map(a=>({...a,text:a.az,added:false})),...DATA.CHG.map(c=>({...c,text:c.name,cam:"",cap:"",added:true}))];
+  IMPACTS.forEach(im=>{
+    const band=ws.addRow([`IMPATTO ${im.n} · ${im.short.toUpperCase()} — ${im.title}. ${im.stmt}`]);
+    xBand(ws,band.number,band.getCell(1).value,head.length,XC.dgrey);band.height=30;
+    all.filter(a=>a.imp===im.n).sort((x,y)=>x.ord-y.ord||Number(x.pr)-Number(y.pr)).forEach(a=>{
+      const row=ws.addRow([a.id,IMPN[a.imp],a.cam,a.cap,a.text,ORD[a.ord],Number(a.pr)||null,a.ris,a.chi,a.fig,a.rep,a.note,a.added?"sì":""]);
+      row.eachCell({includeEmpty:true},(c,k)=>{c.font=xF({bold:k===5});c.alignment={wrapText:true,vertical:"top",horizontal:k===7||k===13?"center":"left"};c.border=xBox;});
+      row.getCell(6).fill=xFill(ordFill[a.ord]);
+      row.height=xH([[a.text,56],[a.cam,38],[a.cap,38],[a.ris,40],[a.note,34],[a.rep,34],[a.fig,30]],30);
+    });
+  });
+  ws.pageSetup={orientation:"landscape",paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0};
+}
+
+// ---- 2 Quattro ambiti
+function xSheetQuad(wb,L){
+  const ws=wb.addWorksheet("2 Quattro ambiti");
+  ws.columns=[7,46,26,11,3,7,46,26,11].map(w=>({width:w}));
+  xTitle(ws,"Consorzio Metropoli · Quattro ambiti di lavoro, un obiettivo centrale","Rielaborazione LAMA: le azioni del laboratorio, nate per impatto, si ricompongono in quattro ambiti che convergono sul rafforzamento dei servizi consortili. Ogni ambito raccoglie obiettivi con un responsabile e un effort stimato su tre anni; i quattro ambiti sono anche i quattro gruppi di lavoro. Gli effort sono collegati al foglio «"+PLAN_SHEET+"».",9);
+  const amb=k=>S.plan.find(a=>a.id===k);
+  const pair=(ka,kb,ia,top)=>{
+    const A=[amb(ka),amb(kb)],n=Math.max(A[0].obj.length,A[1].obj.length);
+    A.forEach((a,j)=>{
+      const c0=j?6:1;let r=top;
+      ws.mergeCells(r,c0,r,c0+3);const h=ws.getCell(r,c0);
+      h.value={richText:[{text:`AMBITO ${ia+j+1}   `,font:xF({bold:true,size:10,color:{argb:XC.orange}})},{text:a.name,font:xF({bold:true,size:14})}]};
+      h.alignment={vertical:"middle"};h.border={top:xThin,left:xThin,right:xThin};ws.getRow(r).height=28;r++;
+      ws.mergeCells(r,c0,r,c0+3);const im=ws.getCell(r,c0);im.value=DATA.AMBITI[a.id].imp;im.font=xF({size:9,color:{argb:XC.dgrey}});im.alignment={wrapText:true,vertical:"top"};im.border={left:xThin,right:xThin,bottom:xThin};ws.getRow(r).height=Math.max(ws.getRow(r).height||0,26);r++;
+      ["Cod.","Obiettivo","Responsabile","gg/persona"].forEach((t,k)=>{const c=ws.getCell(r,c0+k);c.value=t;c.font=xF({bold:true,size:9,color:{argb:XC.dgrey}});c.fill=xFill(XC.soft);c.border=xBox;c.alignment={vertical:"middle",horizontal:k===3?"center":"left"};});r++;
+      const first=r;
+      for(let i=0;i<n;i++){
+        const o=a.obj[i];const cells=[0,1,2,3].map(k=>ws.getCell(r,c0+k));
+        cells.forEach(c=>{c.border=xBox;c.fill=xFill(o?XC.white:XC.soft);c.alignment={wrapText:true,vertical:"middle"};});
+        if(o){
+          cells[0].value=o.id;cells[0].font=xF({bold:true,color:{argb:XC.white}});cells[0].fill=xFill(XC.black);cells[0].alignment={horizontal:"center",vertical:"middle"};
+          cells[1].value=o.name;cells[1].font=xF();
+          cells[2].value=(o.chi||"da definire").toUpperCase();cells[2].font=xF({bold:true,size:8.5,color:{argb:XC.dgrey}});
+          cells[3].value=o.att.length?{formula:`${PREF}D${L.obj[o.id].row}`,result:effTot(o)}:0;cells[3].font=xF({bold:true});cells[3].alignment={horizontal:"center",vertical:"middle"};cells[3].numFmt="0";
+          ws.getRow(r).height=Math.max(ws.getRow(r).height||0,xH([[o.name,46],[o.chi,30]],30));
+        }
+        r++;
+      }
+      ws.mergeCells(r,c0,r,c0+2);const f=ws.getCell(r,c0);f.value=`${a.obj.length} obiettivi · ${a.obj.reduce((s,o)=>s+o.att.length,0)} attività`;f.font=xF({size:9,color:{argb:XC.dgrey}});f.border=xBox;f.alignment={vertical:"middle"};
+      const t=ws.getCell(r,c0+3);t.value={formula:`SUM(${colL(c0+3)}${first}:${colL(c0+3)}${r-1})`,result:a.obj.reduce((s,o)=>s+effTot(o),0)};t.font=xF({bold:true});t.border=xBox;t.alignment={horizontal:"center",vertical:"middle"};t.numFmt='0" gg"';
+      ws.getRow(r).height=22;
+    });
+    return {end:top+3+n,totals:[`D${top+3+n}`,`I${top+3+n}`]};
+  };
+  const p1=pair("R","C",0,4);
+  const band=p1.end+2;
+  const p2=pair("V","S",2,band+2);
+  const tot=S.plan.reduce((s,a)=>s+a.obj.reduce((t,o)=>t+effTot(o),0),0),nAtt=S.plan.reduce((s,a)=>s+a.obj.reduce((t,o)=>t+o.att.length,0),0);
+  ws.mergeCells(band,1,band,9);const c=ws.getCell(band,1);
+  c.value={formula:`"OBIETTIVO CENTRALE  ·  Rafforzamento dei servizi consortili  ·  "&TEXT(${[...p1.totals,...p2.totals].join("+")},"0")&" gg/persona  ·  ${nAtt} attività  ·  2027–2029"`,result:`OBIETTIVO CENTRALE  ·  Rafforzamento dei servizi consortili  ·  ${tot} gg/persona  ·  ${nAtt} attività  ·  2027–2029`};
+  c.font=xF({bold:true,size:13,color:{argb:XC.white}});c.fill=xFill(XC.black);c.alignment={horizontal:"center",vertical:"middle"};ws.getRow(band).height=40;
+  const nr=p2.end+2;ws.mergeCells(nr,1,nr,9);const note=ws.getCell(nr,1);
+  note.value="Come si legge. Gli impatti del laboratorio restano la bussola: Competenze e Valutazione/R&S sono le fondamenta (persone, evidenze), Sviluppo commerciale produce le nuove risposte, Rappresentanza le porta nel confronto con la PA. Ogni ambito dipende da almeno un altro: il coordinamento tra i gruppi di lavoro è parte del piano.";
+  note.font=xF({size:10});note.fill=xFill(XC.ot);note.alignment={wrapText:true,vertical:"middle"};note.border={left:{style:"thick",color:{argb:XC.orange}}};ws.getRow(nr).height=44;
+  ws.pageSetup={orientation:"landscape",paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:1};
+}
+
+// ---- 3 Piano operativo
+function xSheetPlan(wb,L){
+  const ws=wb.addWorksheet(PLAN_SHEET,{views:[{state:"frozen",xSplit:2,ySplit:4}]});
+  const QL=[...Array(12).keys()].map(i=>`${QN[i%4]} ${Y[Math.floor(i/4)]}`);
+  const head=["Cod.","Obiettivo / Attività / Azione fonte","Output","Effort tot (gg/persona)","Effort 2027","Effort 2028","Effort 2029","Responsabile",...QL,"Impatto","Ordine (laboratorio)","Risorse a disposizione oggi","Quali cooperative / figure","Cosa va reperito all'esterno","Note e condizioni"];
+  const NC=head.length,QS=9,QE=20;
+  ws.columns=[8,62,32,10,9,9,9,24,...Array(12).fill(6.5),16,18,30,28,26,30].map(w=>({width:w}));
+  xTitle(ws,"Consorzio Metropoli · Piano operativo 2027–2029","Righe arancio chiaro: obiettivi (effort = somma delle attività; • = trimestri in cui l'obiettivo è attivo). Righe bianche: attività, con x nei trimestri: scrivendo o cancellando una x la cella si colora e l'effort per anno si ricalcola. Righe grigie: azioni del laboratorio da cui derivano le attività, con i tempi indicati dai consorziati (Subito = Q1–Q2 2027 · Dopo = Q3 2027–Q2 2028 · Più avanti = Q3–Q4 2028). Esportato il "+new Date().toLocaleString("it-IT"),NC);
+  [[4,7,"Effort (gg/persona)",XC.dgrey],[9,12,"2027",XC.o3],[13,16,"2028",XC.o2],[17,20,"2029",XC.orange],[21,26,"Dal laboratorio",XC.dgrey]].forEach(([a,b,t,col])=>{ws.mergeCells(3,a,3,b);const c=ws.getCell(3,a);c.value=t;c.font=xF({bold:true,color:{argb:col===XC.o3?XC.black:XC.white}});c.fill=xFill(col);c.alignment={horizontal:"center",vertical:"middle"};c.border=xBox;});
+  ws.getRow(3).height=20;
+  xHead(ws.getRow(4),head,QS);
+  const YR=[["I","L"],["M","P"],["Q","T"]];
+  let r=5;const subRows=[];let gT=0,gY=[0,0,0];
+  S.plan.forEach(amb=>{
+    xBand(ws,r,`${amb.name.toUpperCase()} — ${DATA.AMBITI[amb.id].imp}`,NC);r++;
+    const objRows=[];let aT=0,aY=[0,0,0];
+    amb.obj.forEach(o=>{
+      const lo=L.obj[o.id];const orow=ws.getRow(r);
+      for(let k=1;k<=NC;k++){const c=orow.getCell(k);c.fill=xFill(XC.ot);c.border=xBox;c.font=xF({bold:true});c.alignment={vertical:"middle",wrapText:true};}
+      orow.getCell(1).value=o.id;orow.getCell(2).value=o.name+(o.note?"\n"+o.note:"");orow.getCell(8).value=o.chi||"";
+      if(o.att.length){
+        objRows.push(r);const yrs=sumYears(o.att),tot=effTot(o);aT+=tot;aY=aY.map((v,i)=>v+yrs[i]);
+        ["D","E","F","G"].forEach((C,k)=>{const c=orow.getCell(4+k);c.value={formula:`SUM(${C}${lo.a}:${C}${lo.b})`,result:k?r1(yrs[k-1]):tot};c.numFmt=k?"0.0":"0";c.alignment={horizontal:"center",vertical:"middle"};});
+        for(let i=0;i<12;i++){const C=colL(QS+i);const c=orow.getCell(QS+i);c.value={formula:`IF(COUNTIF(${C}${lo.a}:${C}${lo.b},"x")>0,"•","")`,result:o.att.some(a=>a.q[i])?"•":""};c.alignment={horizontal:"center",vertical:"middle"};}
+      }
+      orow.height=o.note?44:30;r++;
+      o.att.forEach(a=>{
+        const row=ws.getRow(r);const yrs=effYears(a);
+        for(let k=1;k<=NC;k++){const c=row.getCell(k);c.border=xBox;c.font=xF();c.alignment={vertical:"top",wrapText:true};}
+        row.getCell(1).value=a.id;row.getCell(1).font=xF({size:9,bold:true,color:{argb:XC.dgrey}});
+        row.getCell(2).value=a.att;row.getCell(3).value=a.out||null;row.getCell(3).font=xF({size:9,color:{argb:XC.dgrey}});
+        const d=row.getCell(4);d.value=Number(a.eff)||0;d.font=xF({bold:true});d.alignment={horizontal:"center",vertical:"top"};d.numFmt="0.#";
+        YR.forEach(([s,e],y)=>{const c=row.getCell(5+y);c.value={formula:`IF(OR(D${r}="",COUNTIF(I${r}:T${r},"x")=0),"",D${r}*COUNTIF(${s}${r}:${e}${r},"x")/COUNTIF(I${r}:T${r},"x"))`,result:yrs[y]===""?"":Math.round(yrs[y]*100)/100};c.numFmt="0.0";c.alignment={horizontal:"center",vertical:"top"};});
+        a.q.forEach((v,i)=>{const c=row.getCell(QS+i);c.value=v?"x":null;c.alignment={horizontal:"center",vertical:"middle"};});
+        row.height=xH([[a.att,62],[a.out,32]],20);r++;
+      });
+      o.fonte.forEach(f=>{
+        const b=ACT[f.id]||CHG[f.id];const isC=!!CHG[f.id];const row=ws.getRow(r);
+        for(let k=1;k<=NC;k++){const c=row.getCell(k);c.border=xBox;c.font=xF({size:9,color:{argb:XC.dgrey}});c.fill=xFill(XC.soft);c.alignment={vertical:"top",wrapText:true};}
+        const txt=(isC?"Cambiamento atteso · ":"Laboratorio · ")+(isC?b.name:b.az);
+        row.getCell(1).value=f.id;row.getCell(2).value=txt;row.getCell(8).value=f.chi||b.chi||null;
+        f.q.forEach((v,i)=>{const c=row.getCell(QS+i);if(v){c.value="x";c.fill=xFill(XC.lgrey);}c.alignment={horizontal:"center",vertical:"middle"};});
+        [IMPN[b.imp],ORD[b.ord],b.ris,b.fig,b.rep,b.note].forEach((v,k)=>{row.getCell(21+k).value=v||null;});
+        row.height=xH([[txt,62],[b.ris,30],[b.note,30],[b.fig,28],[b.rep,26]],20);r++;
+      });
+    });
+    const srow=ws.getRow(r);subRows.push(r);
+    for(let k=1;k<=NC;k++){const c=srow.getCell(k);c.fill=xFill(XC.ot);c.border=xBox;c.font=xF({bold:true});}
+    srow.getCell(2).value=`Subtotale ${amb.name}`;
+    ["D","E","F","G"].forEach((C,k)=>{const c=srow.getCell(4+k);c.value=objRows.length?{formula:objRows.map(x=>`${C}${x}`).join("+"),result:k?r1(aY[k-1]):aT}:0;c.numFmt=k?"0.0":"0";c.alignment={horizontal:"center"};});
+    srow.height=22;gT+=aT;gY=gY.map((v,i)=>v+aY[i]);r++;
+  });
+  r++;
+  const trow=ws.getRow(r);
+  for(let k=1;k<=NC;k++){const c=trow.getCell(k);c.fill=xFill(XC.black);c.font=xF({bold:true,color:{argb:XC.white}});}
+  trow.getCell(2).value="Totale piano 2027–2029";
+  ["D","E","F","G"].forEach((C,k)=>{const c=trow.getCell(4+k);c.value={formula:subRows.map(x=>`${C}${x}`).join("+"),result:k?r1(gY[k-1]):gT};c.numFmt=k?"0.0":"0";c.alignment={horizontal:"center"};});
+  trow.height=24;
+  ws.addConditionalFormatting({ref:`I5:T${r}`,rules:[
+    {type:"expression",priority:1,formulae:[`AND(LOWER(I5)="x",LEFT($A5,1)<>"D")`],style:{fill:{type:"pattern",pattern:"solid",bgColor:{argb:XC.orange}},font:{bold:true,color:{argb:XC.white}}}},
+    {type:"expression",priority:2,formulae:[`I5="•"`],style:{fill:{type:"pattern",pattern:"solid",bgColor:{argb:XC.o3}},font:{color:{argb:XC.o3}}}}]});
+  ws.pageSetup={orientation:"landscape",paperSize:8,fitToPage:true,fitToWidth:1,fitToHeight:0};
+}
+
+// ---- 4 Riepilogo effort
+function xSheetSum(wb,L){
+  const ws=wb.addWorksheet("4 Riepilogo effort",{views:[{state:"frozen",ySplit:3}]});
+  const head=["Ambito","Cod.","Obiettivo","Responsabile","N. attività","Effort tot (gg/persona)","Effort 2027","Effort 2028","Effort 2029"];
+  ws.columns=[30,7,60,28,10,12,11,11,11].map(w=>({width:w}));
+  xTitle(ws,"Consorzio Metropoli · Riepilogo effort per ambito e obiettivo","Giornate/persona stimate su tre anni, collegate al foglio «"+PLAN_SHEET+"»: modificando lì effort o trimestri, il riepilogo si aggiorna.",head.length);
+  xHead(ws.getRow(3),head,6);
+  let r=4;const subs=[];
+  S.plan.forEach(amb=>{
+    const first=r;
+    amb.obj.forEach((o,i)=>{
+      const lo=L.obj[o.id];const yrs=sumYears(o.att);
+      const row=ws.getRow(r);
+      [i?"":amb.name,o.id,o.name,o.chi||"",o.att.length].forEach((v,k)=>{row.getCell(k+1).value=v;});
+      ["D","E","F","G"].forEach((C,k)=>{row.getCell(6+k).value=o.att.length?{formula:`${PREF}${C}${lo.row}`,result:k?r1(yrs[k-1]):effTot(o)}:0;row.getCell(6+k).numFmt=k?"0.0":"0";});
+      row.eachCell({includeEmpty:true},(c,k)=>{c.border=xBox;c.font=xF({bold:k===1});c.alignment={wrapText:true,vertical:"top",horizontal:k>=5?"center":"left"};});
+      row.height=xH([[o.name,60],[o.chi,28]],20);r++;
+    });
+    const row=ws.getRow(r);subs.push(r);
+    row.getCell(3).value=`Subtotale ${amb.name}`;row.getCell(5).value={formula:`SUM(E${first}:E${r-1})`,result:amb.obj.reduce((s,o)=>s+o.att.length,0)};
+    ["F","G","H","I"].forEach((C,k)=>{const yrs=[0,1,2].map(y=>amb.obj.reduce((s,o)=>s+sumYears(o.att)[y],0));row.getCell(6+k).value={formula:`SUM(${C}${first}:${C}${r-1})`,result:k?r1(yrs[k-1]):amb.obj.reduce((s,o)=>s+effTot(o),0)};row.getCell(6+k).numFmt=k?"0.0":"0";});
+    row.eachCell({includeEmpty:true},(c,k)=>{if(k>9)return;c.fill=xFill(XC.ot);c.border=xBox;c.font=xF({bold:true});c.alignment={horizontal:k>=5?"center":"left"};});
+    r++;
+  });
+  r++;const row=ws.getRow(r);row.getCell(3).value="TOTALE GENERALE";
+  const gY=[0,1,2].map(y=>S.plan.reduce((s,a)=>s+a.obj.reduce((t,o)=>t+sumYears(o.att)[y],0),0));
+  const gRes=[S.plan.reduce((s,a)=>s+a.obj.reduce((t,o)=>t+o.att.length,0),0),S.plan.reduce((s,a)=>s+a.obj.reduce((t,o)=>t+effTot(o),0),0),...gY.map(r1)];
+  ["E","F","G","H","I"].forEach((C,k)=>{const c=row.getCell(5+k);c.value={formula:subs.map(x=>`${C}${x}`).join("+"),result:gRes[k]};c.numFmt=k>1?"0.0":"0";});
+  for(let k=1;k<=9;k++){const c=row.getCell(k);c.fill=xFill(XC.black);c.font=xF({bold:true,color:{argb:XC.white}});c.alignment={horizontal:k>=5?"center":"left"};}
+  ws.pageSetup={orientation:"landscape",paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0};
+}
+
+async function exportXlsx(){
+  if(!window.ExcelJS){toast("Libreria Excel non caricata: controlla la connessione");return;}
+  const wb=new ExcelJS.Workbook();wb.creator="LAMA Impresa Sociale";wb.calcProperties.fullCalcOnLoad=true;
+  const L=xLayout();
+  xSheetLab(wb);xSheetQuad(wb,L);xSheetPlan(wb,L);xSheetSum(wb,L);
+  const buf=await wb.xlsx.writeBuffer();
+  downloadBlob(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),`Metropoli_piano_operativo_${stamp()}.xlsx`);
+  toast("Excel scaricato");
+}
 
 // ---------- tab
 function showTab(k){
