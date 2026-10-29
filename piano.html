@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Metropoli · Dal laboratorio al piano operativo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --black:#000;--orange:#FF5200;--orange-2:#FF8A52;--orange-3:#FFC2A3;--orange-t:#FFF1EA;
+  --muted:#7A7A7A;--dgrey:#54595F;--lgrey:#D1D1D1;--soft:#F7F7F5;--border:#E3E3E0;--white:#fff;
+  --ft:"Syne",Arial,sans-serif;--fb:"Inter Tight",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--white);color:var(--black);font-family:var(--fb);font-size:14px;line-height:1.4}
+button{font-family:var(--fb);cursor:pointer;color:inherit;background:none;border:0;padding:0}
+button:focus-visible,[tabindex]:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+h1,h2,h3{font-family:var(--ft);font-weight:700;margin:0;letter-spacing:-.02em;line-height:1.05}
+p{margin:0}
+
+/* ---------- top bar (come la board) */
+.top{display:flex;align-items:center;gap:20px;padding:12px 24px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.brand{font-family:var(--ft);font-weight:700;font-size:20px;letter-spacing:-.02em}
+.top h1{font-size:20px}
+.top .sub{font-size:12px;color:var(--dgrey)}
+.grow{flex:1}
+.status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dgrey);white-space:nowrap}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--lgrey)}
+.status.local .dot{background:var(--dgrey)}
+.status.saving .dot{background:var(--orange)}
+.btn{border:1px solid var(--black);background:var(--white);color:var(--black);padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.btn:hover{background:var(--orange);border-color:var(--orange);color:var(--white)}
+.btn.dark{background:var(--black);color:var(--white)}
+.btn.dark:hover{background:var(--orange)}
+.btn.ghost{border-color:var(--lgrey)}
+.btn.sm{padding:6px 9px;font-size:10.5px}
+.btn.on{background:var(--black);color:var(--white)}
+.menu{position:relative}
+.menu-list{position:absolute;right:0;top:calc(100% + 4px);background:var(--white);border:1px solid var(--black);min-width:260px;z-index:30;display:none}
+.menu.open .menu-list{display:block}
+.menu-list button{display:block;width:100%;text-align:left;padding:10px 14px;font-size:13px}
+.menu-list button:hover{background:var(--orange-t)}
+.meta{padding:8px 24px;background:var(--black);color:var(--white);font-size:12.5px;display:flex;gap:2px;align-items:baseline}
+.meta b{font-family:var(--ft);font-size:13px;color:var(--orange);white-space:nowrap;letter-spacing:.02em;margin-right:10px}
+.tabs{display:flex;padding:0 24px;border-bottom:1px solid var(--border);overflow-x:auto}
+.tab{padding:14px 18px 12px;font-size:14px;font-weight:600;color:var(--dgrey);border-bottom:3px solid transparent;display:flex;gap:10px;align-items:baseline;white-space:nowrap}
+.tab .n{font-family:var(--ft);font-weight:700;color:var(--muted)}
+.tab.on{color:var(--black);border-bottom-color:var(--orange)}
+.tab.on .n{color:var(--orange)}
+.ihead{padding:14px 24px 10px}
+.ihead .eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange);margin-bottom:4px}
+.ihead h2{font-size:24px;margin-bottom:4px}
+.ihead p{color:var(--dgrey);max-width:1080px;font-size:13.5px}
+.subtabs{display:flex;gap:6px;padding:4px 24px 10px;flex-wrap:wrap}
+
+/* ---------- vista 1: board del laboratorio */
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:4px 24px 24px}
+.col{display:flex;flex-direction:column;background:var(--soft);border:1px solid var(--border)}
+.col-h{padding:10px 12px 9px;display:flex;align-items:baseline;gap:8px;border-bottom:1px solid var(--border);background:var(--white)}
+.col-h .lab{font-family:var(--ft);font-weight:700;font-size:15px}
+.col-h .sub{font-size:11.5px}
+.col-h .cnt{margin-left:auto;font-size:11px;font-weight:700}
+.col[data-col="s"] .col-h{background:var(--orange-3);border-bottom-color:var(--orange-3)}
+.col[data-col="d"] .col-h{background:var(--orange-2);border-bottom-color:var(--orange-2)}
+.col[data-col="p"] .col-h{background:var(--orange);border-bottom-color:var(--orange)}
+.list{flex:1 1 auto;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:60px}
+.card{background:var(--white);border:1px solid var(--border);padding:10px 11px 9px;position:relative;transition:box-shadow .12s}
+.card:hover{box-shadow:0 2px 10px rgba(0,0,0,.09)}
+.card .rank{position:absolute;top:-1px;left:-1px;background:var(--black);color:var(--white);font-family:var(--ft);font-weight:700;font-size:11px;min-width:20px;height:20px;display:flex;align-items:center;justify-content:center}
+.card .txt{font-size:13px;line-height:1.35;padding-left:16px}
+.det{margin:10px 0 0;padding:10px 0 0;border-top:1px dashed var(--lgrey);display:flex;flex-direction:column;gap:10px}
+.det div{font-size:12.5px;line-height:1.4;color:var(--black)}
+.det b{display:block;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#C43F00;margin-bottom:3px}
+.foot{display:flex;align-items:center;gap:6px;margin-top:7px;flex-wrap:wrap}
+.badge-new{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--white);background:var(--dgrey);padding:2px 5px}
+.badge-code{font-size:10.5px;color:var(--muted)}
+#pop{position:fixed;z-index:60;width:340px;background:var(--black);color:var(--white);padding:12px 14px;font-size:12.5px;line-height:1.4;pointer-events:none;opacity:0;transition:opacity .12s;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+#pop.on{opacity:1}
+#pop b{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--orange);margin-bottom:3px}
+#pop .blk+.blk{margin-top:10px}
+#pop .none{color:var(--lgrey);font-style:italic}
+
+/* ---------- vista 2: quattro ambiti */
+.quad{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:4px 24px 16px}
+.qcell{border:1px solid var(--border);background:var(--soft);display:flex;flex-direction:column;min-width:0}
+.qcell .qh{padding:12px 14px 10px;background:var(--white);border-bottom:1px solid var(--border)}
+.qcell .qh .k{font-family:var(--ft);font-weight:700;font-size:11px;letter-spacing:.08em;color:var(--orange);text-transform:uppercase}
+.qcell h2{font-size:20px;margin:3px 0 4px}
+.qcell .imp{font-size:12px;color:var(--dgrey)}
+.qcell ol{list-style:none;margin:0;padding:10px;display:flex;flex-direction:column;gap:8px}
+.qcell li{background:var(--white);border:1px solid var(--border);padding:9px 11px 9px 34px;position:relative;font-size:13px;line-height:1.35;display:flex;gap:10px;align-items:flex-start}
+.qcell li .id{position:absolute;top:-1px;left:-1px;background:var(--black);color:var(--white);font-family:var(--ft);font-weight:700;font-size:11px;min-width:26px;height:20px;display:flex;align-items:center;justify-content:center}
+.qcell li .who{display:block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--dgrey);margin-top:4px}
+.qcell li .eff{margin-left:auto;font-family:var(--ft);font-weight:700;font-size:12px;white-space:nowrap}
+.qcell .qf{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--dgrey);padding:9px 12px;border-top:1px solid var(--border);background:var(--white);margin-top:auto}
+.qcell .qf b{color:var(--black);font-family:var(--ft)}
+.center{grid-column:1/-1;background:var(--black);color:var(--white);display:flex;align-items:center;justify-content:center;gap:28px;text-align:center;padding:18px 24px;flex-wrap:wrap}
+.center .k{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange)}
+.center h2{font-size:22px;color:var(--white)}
+.center .n{font-size:12.5px;color:var(--lgrey)}
+.center .arrow{font-family:var(--ft);font-weight:700;color:var(--orange);font-size:20px}
+.howto{margin:4px 24px 24px;padding:12px 14px;background:var(--orange-t);border-left:3px solid var(--orange);font-size:13px;max-width:1080px}
+@media (max-width:860px){ .quad{grid-template-columns:1fr} .center{order:-1} }
+
+/* ---------- vista 3: gantt */
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:4px 24px 10px}
+.tools .grow{flex:1}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--dgrey);padding:0 24px 10px}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.sw{width:13px;height:13px;display:inline-block}
+.sw.act{background:var(--orange)} .sw.src{background:var(--lgrey)}
+.gwrap{overflow-x:auto;padding:0 24px 24px}
+table.g{border-collapse:collapse;width:100%;min-width:1180px;font-size:13px;border:1px solid var(--border)}
+.g th,.g td{padding:0;vertical-align:middle;border:1px solid var(--border)}
+.g th{background:var(--white);font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--dgrey);padding:8px 8px;text-align:left}
+.g th.q{width:38px;min-width:38px;text-align:center;padding:6px 0;color:var(--black)}
+.g th.y{text-align:left;font-family:var(--ft);font-size:12px;color:var(--black);padding:8px 8px 4px}
+.g th.y.y27{background:var(--orange-3)}.g th.y.y28{background:var(--orange-2)}.g th.y.y29{background:var(--orange);color:var(--white)}
+.g .lead{position:sticky;left:0;background:var(--white);z-index:2;min-width:380px;width:34%}
+.g td.lead{padding:8px 10px}
+.g tr.sec td{background:var(--black);color:var(--white);padding:10px 12px;font-family:var(--ft);font-weight:700;font-size:15px}
+.g tr.sec td span{font-family:var(--fb);font-weight:400;font-size:12px;color:var(--lgrey);margin-left:10px}
+.g tr.obj td{background:var(--orange-t);font-weight:600}
+.g tr.obj td.lead{font-size:13.5px}
+.g tr.obj .sub{display:block;font-weight:400;font-size:11.5px;color:var(--dgrey);margin-top:2px}
+.g tr.act td.lead{cursor:pointer}
+.g tr.act:hover td{background:var(--soft)}
+.g tr.src td{color:var(--dgrey);font-size:12px;background:var(--soft)}
+.g td.q{text-align:center;width:38px}
+.g td.num{text-align:center;font-variant-numeric:tabular-nums;font-size:12.5px;padding:4px 6px;min-width:44px}
+.g td.num.tot{font-weight:700}
+.g td.chi{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--dgrey);padding:4px 8px;min-width:170px;max-width:230px;cursor:pointer}
+.g tr.obj td.chi{color:var(--black)}
+.g tr.tot td{background:var(--black);color:var(--white);font-weight:700}
+.cell{width:16px;height:16px;display:inline-block;vertical-align:middle;transition:transform .1s}
+.cell.on{background:var(--orange)} .cell.off{background:transparent;border:1px solid transparent}
+.cell.src.on{background:var(--lgrey)} .cell.agg.on{background:var(--orange-3)}
+tr:hover .cell.off{border-color:var(--lgrey)}
+.editable td.q{cursor:pointer}
+@media (hover:hover){ .editable td.q:hover .cell{transform:scale(1.2)} }
+.t{display:flex;gap:9px;align-items:flex-start}
+.t .code{font-size:10.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;min-width:34px;padding-top:2px;letter-spacing:.02em}
+.t .txt{flex:1;min-width:0}
+.t .name{line-height:1.35}
+.t .out{font-size:11.5px;color:var(--dgrey);margin-top:2px}
+.t .tags{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:3px;font-size:11px;color:var(--muted)}
+.paste{margin:0 24px 14px;border:1px solid var(--black);padding:12px 14px;display:flex;flex-direction:column;gap:10px;max-width:760px}
+.paste textarea{font:12px ui-monospace,Menlo,monospace;color:var(--black);background:var(--soft);border:1px solid var(--lgrey);padding:10px;min-height:120px;width:100%;border-radius:0}
+.paste .row{display:flex;justify-content:flex-end;gap:8px}
+
+/* ---------- scheda (drawer) */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(540px,100vw);background:var(--white);border-left:1px solid var(--black);z-index:21;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(0,0,0,.2)}
+.drawer .body{flex:1;overflow-y:auto;padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+.drawer .dfoot{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:12px 22px;border-top:1px solid var(--border)}
+.drawer .head .code{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange)}
+.drawer .head h3{font-size:16px;margin-top:4px}
+.field label,.field .lbl{display:block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;color:var(--dgrey)}
+.field textarea,.field input{width:100%;font-family:var(--fb);font-size:12.5px;padding:7px 8px;border:1px solid var(--lgrey);background:var(--white);color:var(--black);border-radius:0;line-height:1.35}
+.field textarea{resize:none;overflow:hidden;min-height:38px;display:block}
+.field textarea:focus,.field input:focus{outline:2px solid var(--orange);outline-offset:-1px;border-color:var(--orange)}
+.field .ro{font-size:12.5px;color:var(--dgrey);padding:4px 0}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chips button{border:1px solid var(--lgrey);background:var(--white);padding:4px 7px;font-size:11px;min-width:46px}
+.chips button.on{background:var(--orange);color:var(--white);border-color:var(--orange)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--black);color:var(--white);padding:10px 16px;font-size:13px;z-index:70;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+@media (max-width:900px){ .board{grid-template-columns:1fr} .g .lead{min-width:250px;width:250px} .t .tags{display:none} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">LAMA</div>
+  <div>
+    <h1>Consorzio Metropoli · Dal laboratorio al piano operativo</h1>
+    <div class="sub">Cosa è emerso dal laboratorio, la rielaborazione in quattro ambiti, il piano proposto 2027–2029</div>
+  </div>
+  <div class="grow"></div>
+  <div class="status local" id="status"><span class="dot"></span><span id="statusText">Versione iniziale</span></div>
+  <div class="menu" id="exportMenu">
+    <button class="btn dark" id="exportBtn" aria-haspopup="true">Esporta</button>
+    <div class="menu-list" role="menu">
+      <button data-exp="tsv">Copia tabella del piano (per Excel)</button>
+      <button data-exp="json">Copia di sicurezza (JSON)</button>
+      <button data-exp="import">Ripristina da copia di sicurezza…</button>
+      <button data-exp="reset">Torna alla versione iniziale</button>
+    </div>
+  </div>
+</header>
+
+<div class="meta"><b>META IMPATTO</b><span>Metropoli diventa un Consorzio di cui le cooperative hanno bisogno. Il Consorzio svolge stabilmente funzioni che generano valore per le cooperative e che le singole non possono svolgere efficacemente da sole.</span></div>
+
+<nav class="tabs" id="tabs">
+  <button class="tab on" data-tab="lab"><span class="n">1</span>Com'era · il laboratorio</button>
+  <button class="tab" data-tab="quad"><span class="n">2</span>Quattro ambiti</button>
+  <button class="tab" data-tab="plan"><span class="n">3</span>Piano proposto</button>
+</nav>
+
+<!-- ============ 1 -->
+<section id="tab-lab">
+  <section class="ihead">
+    <div class="eyebrow" id="labEyebrow"></div>
+    <h2 id="labTitle"></h2>
+    <p id="labStmt"></p>
+  </section>
+  <div class="subtabs" id="labSub"></div>
+  <main class="board" id="labBoard"></main>
+</section>
+
+<!-- ============ 2 -->
+<section id="tab-quad" hidden>
+  <section class="ihead">
+    <div class="eyebrow">Rielaborazione LAMA</div>
+    <h2>Quattro ambiti di lavoro, un obiettivo centrale</h2>
+    <p>Le azioni del laboratorio, nate per impatto, si ricompongono in quattro ambiti che convergono sul rafforzamento dei servizi consortili. Ogni ambito raccoglie obiettivi con un responsabile e un effort stimato su tre anni; i quattro ambiti sono anche i quattro gruppi di lavoro.</p>
+  </section>
+  <div class="quad" id="quad"></div>
+  <div class="howto"><b>Come si legge.</b> Gli impatti del laboratorio restano la bussola: Competenze e Valutazione/R&S sono le fondamenta (persone, evidenze), Sviluppo commerciale produce le nuove risposte, Rappresentanza le porta nel confronto con la PA. Ogni ambito dipende da almeno un altro: il coordinamento tra i gruppi di lavoro è parte del piano.</div>
+</section>
+
+<!-- ============ 3 -->
+<section id="tab-plan" hidden>
+  <section class="ihead">
+    <div class="eyebrow">Piano operativo 2027–2029</div>
+    <h2>Attività, output, effort e responsabili per trimestre</h2>
+    <p>Per ogni obiettivo le attività con output, effort in giornate/persona (ripartite per anno in base ai trimestri) e responsabile. Sotto ogni obiettivo, in grigio, le azioni del laboratorio da cui le attività derivano. Le celle si possono modificare durante la restituzione: le modifiche restano in questo browser e si copiano dal menu Esporta.</p>
+  </section>
+  <div class="tools">
+    <button class="btn sm on" id="toggleSrc">Azioni del laboratorio</button>
+    <button class="btn sm on" id="toggleOut">Output</button>
+    <div class="grow"></div>
+  </div>
+  <div class="paste" id="pastePanel" hidden>
+    <div class="field"><span class="lbl">Incolla una copia di sicurezza (JSON) copiata da questa pagina</span><textarea id="pasteArea" placeholder="{ ... }"></textarea></div>
+    <div class="row"><button class="btn ghost sm" id="pasteCancel">Annulla</button><button class="btn dark sm" id="pasteOk">Carica</button></div>
+  </div>
+  <div class="legend"><span><i class="sw act"></i> trimestre di attività (clic per modificare)</span><span><i class="sw" style="background:var(--orange-3)"></i> trimestri dell'obiettivo (somma delle attività)</span><span><i class="sw src"></i> tempi indicati dal laboratorio per l'azione fonte</span><span>clic sul testo di un'attività o sul responsabile per aprire la scheda</span></div>
+  <div class="gwrap"><table class="g editable" id="planTable"></table></div>
+</section>
+
+<div id="drawerRoot"></div>
+<div id="pop" role="tooltip"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const DATA = {"plan": [{"id": "R", "name": "Rappresentanza", "obj": [{"id": "R1", "name": "Aumentare presenza su tavoli istituzionali", "note": "", "chi": "PRESIDENTE E VICEPRESIDENTE", "att": [{"id": "R1.1", "att": "Mappatura dei tavoli istituzionali e delle reti territoriali rilevanti", "out": "Doc elenco tavoli", "eff": 4.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "R1.2", "att": "Ricognizione della presenza attuale delle cooperative", "out": "Doc elenco partecipazioni attuali", "eff": 2.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "R1.3", "att": "Definizione delle priorità di rappresentanza e dei referenti", "out": "Piano di rappresentanza consortile", "eff": 5.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "R1.4", "att": "Attivazione contatti e partecipazione ai tavoli", "out": "Report tavoli", "eff": 30.0, "q": [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"id": "R1.5", "att": "Coordinamento e restituzione (semestrale) periodica alle consorziate", "out": "Report semestrale attività", "eff": 10.0, "q": [0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]}], "fonte": [{"id": "D14", "kind": "chg", "q": [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], "chi": "non indicato"}, {"id": "D17", "kind": "act", "q": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "chi": "Consorzio"}, {"id": "D20", "kind": "chg", "q": [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], "chi": "Più cooperative insieme"}, {"id": "D21", "kind": "act", "q": [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], "chi": "non indicato"}]}, {"id": "R2", "name": "Elaborare proposte condivise inerenti condizioni di servizio desiderabili", "note": "", "chi": "GdL DI AREA TEMATICA", "att": [{"id": "R2.1", "att": "Dare mandato chiaro ai vari GdL", "out": "", "eff": 1.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "R2.2", "att": "Raccolta delle criticità contrattuali, economiche e organizzative dei servizi", "out": "Quadro delle principali criticità", "eff": 4.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]}, {"id": "R2.3", "att": "Analisi comparata di capitolati, condizioni di affidamento e modelli di servizio", "out": "Documento di analisi", "eff": 6.0, "q": [1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0]}, {"id": "R2.4", "att": "Organizzazione di due incontri di confronto tra cooperative", "out": "Priorità e posizioni condivise", "eff": 4.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]}, {"id": "R2.5", "att": "Elaborazione di proposte comuni sulle condizioni di servizio", "out": "Documento di posizionamento", "eff": 4.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]}, {"id": "R2.6", "att": "Validazione delle proposte con le cooperative", "out": "Documento condiviso e approvato", "eff": 2.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]}], "fonte": [{"id": "D8", "kind": "act", "q": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "chi": "Consorzio"}]}, {"id": "R3", "name": "Elaborare e promuovere proposte condivise di miglioramento delle condizioni lavorative", "note": "", "chi": "PRESIDENTE E VICEPRESIDENTE", "att": [{"id": "R3.1", "att": "Analisi del CCNL delle cooperative sociali e raccolta delle principali criticità ed esigenze delle consorziate", "out": "Quadro delle criticità e dei fabbisogni", "eff": 4.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "R3.2", "att": "Confronto tra le cooperative per individuare le priorità comuni di miglioramento", "out": "Priorità condivise", "eff": 4.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "R3.3", "att": "Elaborazione di proposte di miglioramento delle condizioni contrattuali e lavorative, valutandone le implicazioni economiche e organizzative", "out": "Documento di proposte condivise", "eff": 4.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "R3.4", "att": "Promozione delle proposte presso organizzazioni di rappresentanza, parti sociali e interlocutori istituzionali", "out": "Documento di posizionamento e incontri di interlocuzione", "eff": 10.0, "q": [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}], "fonte": [{"id": "D9", "kind": "act", "q": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "chi": "Consorzio"}]}, {"id": "R4", "name": "Creazione di una campagna sul valore del lavoro sociale", "note": "", "chi": "CDA + CONSULENTE ESTERNO", "att": [{"id": "R4.1", "att": "Definizione degli obiettivi, dei destinatari e dei messaggi", "out": "Brief strategico della campagna", "eff": 3.0, "q": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]}, {"id": "R4.2", "att": "Raccolta di testimonianze, dati ed esperienze dalle cooperative", "out": "Materiali e contenuti di base", "eff": 6.0, "q": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]}, {"id": "R4.3", "att": "Ideazione del concept e del piano di comunicazione", "out": "Concept e piano editoriale", "eff": 5.0, "q": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]}, {"id": "R4.4", "att": "Produzione dei contenuti e dei materiali", "out": "Kit di comunicazione", "eff": 8.0, "q": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]}, {"id": "R4.5", "att": "Lancio e diffusione della campagna", "out": "Campagna attivata", "eff": 8.0, "q": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]}, {"id": "R4.6", "att": "Monitoraggio dei risultati", "out": "Report di diffusione", "eff": 2.0, "q": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]}], "fonte": [{"id": "D7", "kind": "act", "q": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "chi": "Consorzio con supporto esterno"}]}, {"id": "R5", "name": "Presentazione e diffusione del bilancio sociale e di rapporti tematici territoriali", "note": "", "chi": "DIRETTORE + STAFF", "att": [{"id": "R5.1", "att": "Individuazione dei destinatari e delle occasioni di presentazione", "out": "Piano di diffusione", "eff": 3.0, "q": [0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0]}, {"id": "R5.2", "att": "Predisposizione di sintesi e materiali divulgativi", "out": "Kit di presentazione", "eff": 6.0, "q": [0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0]}, {"id": "R5.3", "att": "Organizzazione di eventi o incontri territoriali", "out": "Due incontri di presentazione", "eff": 9.0, "q": [0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0]}, {"id": "R5.4", "att": "Diffusione attraverso canali istituzionali e reti delle cooperative", "out": "Materiali pubblicati e distribuiti", "eff": 3.0, "q": [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0]}], "fonte": [{"id": "D18", "kind": "act", "q": [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0], "chi": "Consorzio con supporto esterno"}, {"id": "D19", "kind": "act", "q": [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0], "chi": "Più cooperative insieme"}]}]}, {"id": "C", "name": "Sviluppo condiviso delle competenze", "obj": [{"id": "C1", "name": "Condivisione delle buone pratiche (modelli di gestione RU e welfare aziendale)", "note": "", "chi": "GDL RISORSE UMANE", "att": [{"id": "C1.1", "att": "Ricognizione delle esperienze e competenze presenti nelle cooperative", "out": "Mappatura delle buone pratiche", "eff": 4.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "C1.2", "att": "Selezione e approfondimento di esperienze significative", "out": "Schede di caso", "eff": 5.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "C1.3", "att": "Organizzazione di incontri di scambio e approfondimento", "out": "2 incontri tematici", "eff": 4.0, "q": [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "C1.4", "att": "Individuazione delle condizioni per trasferire o replicare le esperienze", "out": "Schede di trasferibilità", "eff": 4.0, "q": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "C1.5", "att": "Organizzazione e condivisione dei materiali", "out": "Repository delle buone pratiche", "eff": 2.0, "q": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]}], "fonte": [{"id": "D5", "kind": "act", "q": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "chi": "Più cooperative insieme"}, {"id": "D6", "kind": "act", "q": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "chi": "Più cooperative insieme"}, {"id": "D10", "kind": "act", "q": [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0], "chi": "Consorzio con supporto esterno"}]}, {"id": "C2", "name": "Avere un roster condiviso di consulenti specializzati", "note": "", "chi": "DIRETTORE", "att": [{"id": "C2.1", "att": "Raccolta dei fabbisogni di consulenza delle cooperative", "out": "Mappa delle competenze richieste", "eff": 2.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "C2.2", "att": "Ricognizione dei professionisti già utilizzati dalle cooperative", "out": "Elenco preliminare dei consulenti", "eff": 3.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "C2.3", "att": "Definizione dei criteri di selezione e delle modalità di accesso", "out": "Regole di funzionamento del roster", "eff": 3.0, "q": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "C2.4", "att": "Costruzione dell’anagrafica condivisa", "out": "Database dei consulenti", "eff": 3.0, "q": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "C2.5", "att": "Attivazione e condivisione dello strumento", "out": "Roster operativo", "eff": 2.0, "q": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]}], "fonte": [{"id": "D27", "kind": "act", "q": [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0], "chi": "Consorzio con supporto esterno"}]}, {"id": "C3", "name": "Realizzare percorsi di formazione condivisa", "note": "", "chi": "GDL RISORSE UMANE + AGENZIA FORMATIVA", "att": [{"id": "C3.1", "att": "Raccolta e prioritizzazione dei fabbisogni formativi", "out": "Mappa dei bisogni formativi", "eff": 4.0, "q": [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0]}, {"id": "C3.2", "att": "Definizione del programma formativo annuale", "out": "Piano formativo condiviso", "eff": 4.0, "q": [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0]}, {"id": "C3.3", "att": "Individuazione di docenti, esperti e risorse disponibili", "out": "Programma e docenti", "eff": 4.0, "q": [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0]}, {"id": "C3.4", "att": "Organizzazione e realizzazione di percorsi formativi", "out": "min. 2 percorsi formativi condivisi", "eff": 12.0, "q": [0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0]}, {"id": "C3.5", "att": "Raccolta feedback e valutazione", "out": "Report di valutazione", "eff": 2.0, "q": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0]}], "fonte": [{"id": "D11", "kind": "act", "q": [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0], "chi": "Consorzio"}]}, {"id": "C4", "name": "Condivisione dipendenti", "note": "", "chi": "GRUPPO DI COOPERATIVE DISPONIBILI ALLA SPERIMENTAZIONE", "att": [{"id": "C4.1", "att": "Analisi dei fabbisogni di personale e delle professionalità disponibili", "out": "Mappa delle esigenze e disponibilità", "eff": 4.0, "q": [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]}, {"id": "C4.2", "att": "Analisi delle condizioni normative, contrattuali e organizzative", "out": "Documento di fattibilità", "eff": 4.0, "q": [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]}, {"id": "C4.3", "att": "Definizione di un modello di collaborazione tra cooperative", "out": "Protocollo operativo", "eff": 4.0, "q": [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]}, {"id": "C4.4", "att": "Individuazione delle cooperative disponibili alla sperimentazione", "out": "Gruppo pilota", "eff": 1.0, "q": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]}, {"id": "C4.5", "att": "Accompagnamento a una prima sperimentazione", "out": "Sperimentazione attivata", "eff": 6.0, "q": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0]}, {"id": "C4.6", "att": "Valutazione e revisione del modello", "out": "Report e modello aggiornato", "eff": 2.0, "q": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]}], "fonte": [{"id": "D12", "kind": "act", "q": [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0], "chi": "non indicato"}]}]}, {"id": "V", "name": "Valutazione, ricerca e sviluppo", "obj": [{"id": "V1", "name": "Avere un sistema condiviso di raccolta, analisi e elaborazione dati di output e outcome", "note": "", "chi": "CDA + DIRETTORE + CONSULENTE ESTERNO", "att": [{"id": "V1.0", "att": "Istituire la funzione consortile di R&D", "out": "Funzione R&D istituita con budget dedicato", "eff": 2.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "V1.1", "att": "Ricognizione dei sistemi di raccolta dati già utilizzati dalle cooperative", "out": "Mappatura dei sistemi esistenti", "eff": 4.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "V1.2", "att": "Individuazione degli ambiti comuni di misurazione", "out": "Framework di valutazione condiviso", "eff": 6.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "V1.3", "att": "Definizione di indicatori comuni di output e outcome", "out": "Set di indicatori", "eff": 4.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "V1.4", "att": "Progettazione degli strumenti di raccolta e organizzazione dei dati", "out": "Modello di raccolta dati", "eff": 6.0, "q": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "V1.5", "att": "Realizzazione di una prima sperimentazione con alcune cooperative", "out": "Dataset pilota", "eff": 8.0, "q": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "V1.6", "att": "Analisi dei risultati e revisione degli strumenti", "out": "Report di sperimentazione e protocollo di gestione del sistema", "eff": 4.0, "q": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "V1.7", "att": "Implementazione sistema raccolta e analisi dati", "out": "Report periodici", "eff": 10.0, "q": [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]}], "fonte": [{"id": "D16", "kind": "act", "q": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "chi": "Consorzio"}]}, {"id": "V2", "name": "Elaborazione di rapporti tematici territoriali", "note": "", "chi": "CDA + DIRETTORE + CONSULENTE ESTERNO", "att": [{"id": "V2.1", "att": "Individuazione dei temi prioritari e dei territori di riferimento", "out": "Piano delle ricerche", "eff": 4.0, "q": [0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]}, {"id": "V2.2", "att": "Definizione della metodologia e delle fonti", "out": "Disegno di ricerca", "eff": 4.0, "q": [0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0]}, {"id": "V2.3", "att": "Raccolta di dati e informazioni territoriali", "out": "Base dati e materiali di ricerca", "eff": 10.0, "q": [0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0]}, {"id": "V2.4", "att": "Analisi dei dati e individuazione delle evidenze principali", "out": "Quadro interpretativo", "eff": 10.0, "q": [0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0]}, {"id": "V2.5", "att": "Redazione di un primo rapporto tematico", "out": "Rapporto territoriale", "eff": 10.0, "q": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1]}, {"id": "V2.6", "att": "Elaborazione della sintesi divulgativa", "out": "Executive summary", "eff": 4.0, "q": [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1]}], "fonte": [{"id": "D15", "kind": "act", "q": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "chi": "Consorzio"}]}, {"id": "V3", "name": "Fundraising per ricerca e sviluppo", "note": "", "chi": "CDA + DIRETTORE + CONSULENTE ESTERNO", "att": [{"id": "V3.1", "att": "Ricognizione delle opportunità di finanziamento", "out": "Mappa delle opportunità", "eff": 4.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "V3.2", "att": "Individuazione delle priorità progettuali finanziabili", "out": "Portfolio delle idee progettuali", "eff": 3.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "V3.3", "att": "Costruzione di relazioni con potenziali finanziatori e partner", "out": "Mappa dei partner e contatti attivati", "eff": 5.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "V3.4", "att": "Sviluppo di concept progettuali", "out": "2 concept note", "eff": 6.0, "q": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "V3.5", "att": "Preparazione di candidature a finanziamento", "out": "Proposte progettuali", "eff": 20.0, "q": [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]}], "fonte": [{"id": "D28", "kind": "act", "q": [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0], "chi": "Consorzio"}, {"id": "D23", "kind": "act", "q": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "chi": "Più cooperative insieme"}, {"id": "D29", "kind": "act", "q": [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], "chi": "Consorzio con supporto esterno"}, {"id": "D30", "kind": "act", "q": [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], "chi": "Consorzio"}]}]}, {"id": "S", "name": "Sviluppo commerciale", "obj": [{"id": "S1", "name": "Creare una pipeline commerciale condivisa", "note": "", "chi": "DIRETTORE + CDA", "att": [{"id": "S1.1", "att": "Ricognizione delle opportunità commerciali e dei contatti esistenti", "out": "Mappatura delle opportunità", "eff": 4.0, "q": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S1.2", "att": "Definizione dei criteri di qualificazione e assegnazione delle opportunità", "out": "Regole di gestione condivisa", "eff": 4.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S1.3", "att": "Progettazione di uno strumento comune di monitoraggio", "out": "Modello di pipeline commerciale", "eff": 4.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S1.4", "att": "Popolamento iniziale con opportunità e contatti", "out": "Pipeline operativa", "eff": 4.0, "q": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S1.5", "att": "Definizione delle responsabilità e delle procedure di aggiornamento", "out": "Protocollo operativo", "eff": 3.0, "q": [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S1.6", "att": "Aggiornamento e manutenzione dello strumento", "out": "Strumento aggiornato e utilizzato correttamente", "eff": 8.0, "q": [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}], "fonte": [{"id": "D24", "kind": "act", "q": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "chi": "Più cooperative insieme"}, {"id": "D25", "kind": "act", "q": [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0], "chi": "Consorzio"}]}, {"id": "S2", "name": "Elaborare una strategia commerciale consortile", "note": "", "chi": "DIRETTORE + CDA", "att": [{"id": "S2.1", "att": "Analisi dell’offerta attuale delle cooperative e del Consorzio", "out": "Mappa dell’offerta", "eff": 4.0, "q": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S2.2", "att": "Analisi dei mercati, della domanda e delle opportunità emergenti", "out": "Analisi di mercato", "eff": 8.0, "q": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S2.3", "att": "Individuazione degli ambiti prioritari di sviluppo", "out": "Priorità commerciali", "eff": 4.0, "q": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S2.4", "att": "Definizione del posizionamento e della proposta di valore comune", "out": "Strategia di posizionamento", "eff": 2.0, "q": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S2.5", "att": "Definizione del modello commerciale e dei rapporti tra Consorzio e cooperative", "out": "Modello organizzativo commerciale", "eff": 4.0, "q": [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S2.6", "att": "Elaborazione di un piano di sviluppo a 12-24 mesi", "out": "Piano commerciale", "eff": 6.0, "q": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S2.7", "att": "Validazione della strategia con le cooperative", "out": "Strategia condivisa", "eff": 2.0, "q": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]}], "fonte": [{"id": "D26", "kind": "act", "q": [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0], "chi": "Consorzio"}]}, {"id": "S3", "name": "Progettare e realizzare nuove iniziative consortili", "note": "Stima riferita allo sviluppo e all’avvio di una prima iniziativa pilota.", "chi": "DIRETTORE + CDA", "att": [{"id": "S3.1", "att": "Raccolta e selezione delle idee progettuali", "out": "Portfolio di opportunità", "eff": 4.0, "q": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S3.2", "att": "Analisi preliminare di fattibilità delle iniziative", "out": "Schede di prefattibilità", "eff": 6.0, "q": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]}, {"id": "S3.3", "att": "Selezione di un’iniziativa prioritaria", "out": "Progetto pilota individuato", "eff": 3.0, "q": [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]}, {"id": "S3.4", "att": "Definizione del modello di servizio e del modello gestionale", "out": "Progetto operativo", "eff": 8.0, "q": [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]}, {"id": "S3.5", "att": "Elaborazione del modello economico e finanziario", "out": "Business plan preliminare", "eff": 6.0, "q": [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]}, {"id": "S3.6", "att": "Costruzione della partnership e definizione delle responsabilità", "out": "Accordo operativo tra i soggetti coinvolti", "eff": 5.0, "q": [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]}, {"id": "S3.7", "att": "Ricerca delle risorse e definizione del piano di attivazione", "out": "Piano di avvio", "eff": 5.0, "q": [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0]}, {"id": "S3.8", "att": "Accompagnamento alla sperimentazione", "out": "Progetto pilota avviato", "eff": 12.0, "q": [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1]}, {"id": "S3.9", "att": "Monitoraggio e valutazione della sperimentazione", "out": "Report di valutazione", "eff": 5.0, "q": [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1]}], "fonte": [{"id": "D31", "kind": "act", "q": [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], "chi": "Consorzio"}]}]}], "ACT": [{"id": "D17", "obj": "R1", "imp": 2, "cam": "Crescono le competenze necessarie per utilizzare realmente coprogrammazione e coprogettazione.", "cap": "Costruire una capacità stabile di rappresentanza e interlocuzione strategica con la PA", "az": "Garantire una presenza consortile competente e continuativa nei luoghi di confronto con gli enti (anche con cooperative delegate al posto del consorzio).", "ord": 0, "pr": "4", "ris": "Si diminuendo alcuni carichi di lavoro operativo", "chi": "Consorzio", "fig": "Presidenza Direzione", "rep": "", "note": "coinvolgere anche i vice presidenti", "add": false, "q": [1, 1, 1, 1, 1, 1, 1, 1], "orig": "Rappresentanza → Aumentare presenza su tavoli istituzionali", "lama": "La sintesi colloca l'obiettivo solo in Q1–Q2 2027, ma la presenza è una funzione continuativa: proposta estesa a tutto il periodo. È l'azione che rende concreto il «senso di appartenenza» (D14) e la consapevolezza del potere contrattuale (D20)."}, {"id": "D21", "obj": "R1", "imp": 2, "cam": "Si consolidano relazioni con PA e altri attori fondate anche sulla produzione di conoscenza, non soltanto sulla gestione dei servizi.", "cap": "Costruire una capacità stabile di rappresentanza e interlocuzione strategica con la PA", "az": "Costruire un'interlocuzione continuativa con gli enti, anticipando di circa 12 mesi le scadenze delle gare per condividere punti di forza, criticità e possibili evoluzioni dei servizi.", "ord": 2, "pr": "1", "ris": "Difficile da attuare con la PA occorre prima mettere in piedi le proposte precedenti", "chi": "", "fig": "", "rep": "", "note": "", "add": false, "q": [0, 0, 0, 0, 0, 0, 1, 1], "orig": "assente dalle schede", "lama": "Azione della matrice non ripresa in nessuna scheda. Collocata qui perché è l'evoluzione della presenza ai tavoli (D17) una volta disponibili evidenze (D19) e pipeline (D25). «Chi può farla» non indicato."}, {"id": "D8", "obj": "R2", "imp": 1, "cam": "Il sistema consortile acquisisce maggiore capacità di rappresentare verso l'esterno i problemi strutturali del lavoro sociale.", "cap": "Costruire una capacità comune di rappresentanza sulle condizioni e sul valore del lavoro sociale", "az": "Interloquire con gli enti committenti per il riconoscimento economico e organizzativo di condizioni di lavoro sostenibili, compreso il riconoscimento nei servizi delle modalità che favoriscono la conciliazione.", "ord": 0, "pr": "4", "ris": "Le singole cooperative per le proprie gare, il consorzio per le gare del consorzio", "chi": "Consorzio", "fig": "", "rep": "", "note": "Supporto e coordinamento del consorzio verso \"battaglie comuni\"", "add": false, "q": [1, 1, 0, 0, 1, 1, 0, 0], "orig": "Rappresentanza → Elaborare proposte condivise inerenti condizioni di servizio desiderabili", "lama": ""}, {"id": "D9", "obj": "R3", "imp": 1, "cam": "Il sistema consortile acquisisce maggiore capacità di rappresentare verso l'esterno i problemi strutturali del lavoro sociale.", "cap": "Costruire una capacità comune di rappresentanza sulle condizioni e sul valore del lavoro sociale", "az": "Sviluppare un'azione politica sul rinnovo e sull'adeguamento del CCNL, anche rispetto ai trattamenti previsti per funzioni equivalenti nella PA, di riforma del codice degli appalti, nonché di corretta applicazione di processi di coprogettazione e coprogrammazione, anche in alleanza con altre organizzazioni.", "ord": 0, "pr": "5", "ris": "mancano momenti di condivisioni di posizioni comuni", "chi": "Consorzio", "fig": "CdA allargato del Consorzio", "rep": "", "note": "Portare la posizione comune del consorzio", "add": false, "q": [1, 1, 0, 0, 0, 0, 0, 0], "orig": "Rappresentanza → Elaborare e promuovere proposte condivise di miglioramento delle condizioni lavorative", "lama": "L'obiettivo esiste nella scheda ma non nella sintesi per trimestri: nessun trimestre assegnato dai consorziati. Proposta da «Subito»; un'azione politica è però continuativa e dipende da alleanze esterne."}, {"id": "D7", "obj": "R4", "imp": 1, "cam": "Il sistema consortile acquisisce maggiore capacità di rappresentare verso l'esterno i problemi strutturali del lavoro sociale.", "cap": "Costruire una capacità comune di rappresentanza sulle condizioni e sul valore del lavoro sociale", "az": "Costruire azioni di comunicazione e interlocuzione istituzionale capaci di rappresentare il valore, la qualità e l'attrattività del lavoro sociale e cooperativo.", "ord": 0, "pr": "3", "ris": "", "chi": "Consorzio con supporto esterno", "fig": "Presidenti e Responsabili RU e funzione interna del Consorzio", "rep": "Esperto comunicazione", "note": "", "add": false, "q": [0, 0, 1, 1, 1, 1, 0, 0], "orig": "Rappresentanza → Creazione di una campagna sul valore del lavoro sociale", "lama": "Nella matrice è «Subito», nella sintesi la campagna parte in Q3 2027. Tenuta la collocazione dei consorziati: una campagna ha bisogno prima dei materiali raccolti (D16) e dell'esperto di comunicazione da reperire."}, {"id": "D18", "obj": "R5", "imp": 2, "cam": "Il sistema cooperativo dispone di evidenze proprie sui bisogni e sulle trasformazioni territoriali.", "cap": "Produrre, raccogliere e interpretare conoscenza per orientare le scelte del sistema cooperativo", "az": "Organizzare momenti di restituzione e approfondimento, traducendo le evidenze raccolte in possibili linee di sviluppo.", "ord": 1, "pr": "1", "ris": "Se mettiamo in pratica l'analisi delle ricerche esistenti come delineato nelle risposte precedenti le risorse fra 6/10 mesi potrebbero esserci", "chi": "Consorzio con supporto esterno", "fig": "", "rep": "Dottorandi scienze politiche", "note": "", "add": false, "q": [0, 0, 0, 1, 0, 1, 0, 1], "orig": "Rappresentanza → Presentazione e diffusione del bilancio sociale e di rapporti tematici territoriali", "lama": "Dipende da D15 e D16 (ambito Valutazione): la restituzione è il punto in cui le evidenze passano alla rappresentanza."}, {"id": "D19", "obj": "R5", "imp": 2, "cam": "Il sistema cooperativo dispone di evidenze proprie sui bisogni e sulle trasformazioni territoriali.", "cap": "Produrre, raccogliere e interpretare conoscenza per orientare le scelte del sistema cooperativo", "az": "Portare nelle sedi di confronto analisi ed evidenze costruite insieme alle cooperative.", "ord": 1, "pr": "2", "ris": "Gruppi di lavoro ed uffici di progettazione delle singole cooperative", "chi": "Più cooperative insieme", "fig": "", "rep": "", "note": "Rafforzare i gruppi di lavoro investendo anche economicamente sulle singole persone che vi partecipano", "add": false, "q": [0, 0, 0, 0, 1, 1, 1, 1], "orig": "Rappresentanza → Presentazione e diffusione del bilancio sociale e di rapporti tematici territoriali", "lama": ""}, {"id": "D5", "obj": "C1", "imp": 1, "cam": "Le esperienze efficaci sviluppate dalle singole cooperative diventano patrimonio comune.", "cap": "Sviluppare e diffondere modelli organizzativi capaci di migliorare la qualità e l'attrattività del lavoro", "az": "Avviare mappatura fra le consorziate sul tema", "ord": 0, "pr": "1", "ris": "Gruppo Risorse Umane del Consorzio", "chi": "Più cooperative insieme", "fig": "ARCA, ALICE, Progetto 5, CAT, Cepiss, Coop21, Elfo, Selva, Gaetano Barberi, Eskimo, Odissea · Responsabili RU", "rep": "", "note": "", "add": false, "q": [1, 0, 0, 0, 0, 0, 0, 0], "orig": "Competenze → Condivisione delle buone pratiche", "lama": "Nella scheda il testo è stato precisato in «mappatura sul tema welfare aziendale (o simili)»: la matrice dice solo «sul tema». Da confermare l'oggetto della mappatura."}, {"id": "D6", "obj": "C1", "imp": 1, "cam": "Riescono a costruire condizioni organizzative e percorsi professionali più attrattivi.", "cap": "Sviluppare e mettere in comune competenze e professionalità strategiche", "az": "Studiare le pratiche organizzative più efficaci già presenti nelle cooperative e favorirne l'adattamento e la diffusione.", "ord": 0, "pr": "2", "ris": "Gruppo Risorse Umane", "chi": "Più cooperative insieme", "fig": "ARCA, ALICE, Progetto 5, CAT, Cepiss, Coop21, Elfo, Selva, Gaetano Barberi, Eskimo, Odissea · Responsabili RU", "rep": "", "note": "", "add": false, "q": [1, 1, 0, 0, 0, 0, 0, 0], "orig": "Competenze → Condivisione delle buone pratiche", "lama": "I consorziati chiudono mappatura e studio in un solo trimestre (Q1 2027). Proposta: lo studio segue la mappatura e occupa anche Q2."}, {"id": "D10", "obj": "C1", "imp": 1, "cam": "Riescono a costruire condizioni organizzative e percorsi professionali più attrattivi.", "cap": "Sviluppare e diffondere modelli organizzativi capaci di migliorare la qualità e l'attrattività del lavoro", "az": "Sperimentare e promuovere modalità organizzative che favoriscano la conciliazione vita-lavoro, a partire dai servizi domiciliari e dal riconoscimento dei tempi di spostamento.", "ord": 1, "pr": "1", "ris": "", "chi": "Consorzio con supporto esterno", "fig": "", "rep": "", "note": "", "add": false, "q": [0, 0, 0, 0, 1, 1, 0, 0], "orig": "Rappresentanza → Elaborare proposte condivise inerenti condizioni di servizio desiderabili", "mv": true, "lama": "Spostata da Rappresentanza a Competenze: è una sperimentazione organizzativa interna, non un'azione verso l'esterno. Resta il legame con D8, che chiede agli enti il riconoscimento delle modalità sperimentate. Trimestri come nella sintesi (Q1–Q2 2028)."}, {"id": "D27", "obj": "C2", "imp": 3, "cam": "Le cooperative sviluppano capacità di ricerca, progettazione e sviluppo di nuovi servizi anche rivolti alla domanda privata, tenendo insieme sostenibilità economica, capacità di investimento e vincoli normativi.", "cap": "Sviluppare una funzione consortile di ricerca, analisi e progettazione capace di intercettare i bisogni emergenti, valutarne la fattibilità e accompagnare lo sviluppo di nuovi servizi (si appoggia sulla funzione di conoscenza dell'area PA)", "az": "Attivare competenze specialistiche interne ed esterne: service design, accesso al credito, fundraising, business planning, ricerca di immobili.", "ord": 1, "pr": "3", "ris": "Nessuna", "chi": "Consorzio con supporto esterno", "fig": "Direttore Metropoli", "rep": "Agenzia immobiliare, esperto foundraising, direttore finanziario...", "note": "N.b.: scegliere da cosa cominciare", "add": false, "q": [0, 0, 1, 1, 0, 0, 0, 0], "orig": "Competenze → Avere un roster condiviso di consulenti specializzati", "lama": "La matrice dice «Dopo» e «nessuna risorsa oggi»; la sintesi colloca il roster in Q1 2027. Proposta da «Dopo» (Q3–Q4 2027). Il roster potrebbe raccogliere anche le figure da reperire indicate altrove: esperto comunicazione (D7), competenza di ricerca e IA (D15), dottorandi (D18), e l'«albo di professionisti/fornitori con tariffazione» citato nelle note di D12."}, {"id": "D11", "obj": "C3", "imp": 1, "cam": "Le esperienze efficaci sviluppate dalle singole cooperative diventano patrimonio comune.", "cap": "Sviluppare e mettere in comune competenze e professionalità strategiche", "az": "Costruire percorsi formativi condivisi per coordinatori e responsabili di area (anche su valutazione e percorsi di carriera trasversali a più cooperative).", "ord": 1, "pr": "2", "ris": "Fatti seminari per gli educatori", "chi": "Consorzio", "fig": "Direttore", "rep": "", "note": "N.b.: C'è una differenza nei ruoli nelle strutture aziendali", "add": false, "q": [0, 0, 1, 1, 0, 1, 1, 1], "orig": "Competenze → Realizzare percorsi di formazione condivisa", "lama": ""}, {"id": "D12", "obj": "C4", "imp": 1, "cam": "Le esperienze efficaci sviluppate dalle singole cooperative diventano patrimonio comune.", "cap": "Sviluppare e mettere in comune competenze e professionalità strategiche", "az": "Esplorare forme di condivisione e impiego trasversale tra cooperative di alcune professionalità e competenze.", "ord": 1, "pr": "3", "ris": "", "chi": "", "fig": "", "rep": "", "note": "Qui bisogna individuare gli ambiti specifici: es. FINANZA. Rispetto alle figure specialistiche dare la possibilità di lavorare part time per più consorziate. Fare un albo di professionisti/fornitori con tariffazione", "add": false, "q": [0, 0, 0, 0, 1, 1, 0, 0], "orig": "Competenze → Condivisione dipendenti", "lama": "«Chi può farla» non indicato. Le note contengono due cose diverse: la condivisione part-time di figure specialistiche (questa azione) e l'albo di fornitori con tariffazione, che coincide con il roster (C2/D27)."}, {"id": "D16", "obj": "V1", "imp": 2, "cam": "Il sistema cooperativo dispone di evidenze proprie sui bisogni e sulle trasformazioni territoriali.", "cap": "Produrre, raccogliere e interpretare conoscenza per orientare le scelte del sistema cooperativo", "az": "Raccogliere e sistematizzare materiali e informazioni provenienti dalle cooperative.", "ord": 0, "pr": "3", "ris": "Si potrebbero trovare con un minimo investimento", "chi": "Consorzio", "fig": "personale interno con eventuale calo di lavoro", "rep": "", "note": "Anche tramite bilanci sociali delle singole cooperative", "add": false, "q": [1, 1, 0, 0, 0, 0, 0, 0], "orig": "in due schede: Valutazione → Sistema condiviso dati; Rappresentanza → Presentazione e diffusione del bilancio sociale", "lama": "Nelle schede compare due volte. Tenuta solo in Valutazione (è la raccolta); la diffusione resta in Rappresentanza con D18 e D19."}, {"id": "D15", "obj": "V2", "imp": 2, "cam": "Il sistema cooperativo dispone di evidenze proprie sui bisogni e sulle trasformazioni territoriali.", "cap": "Produrre, raccogliere e interpretare conoscenza per orientare le scelte del sistema cooperativo", "az": "Analizzare le ricerche esistenti e sviluppare attività di ricerca su bisogni, servizi e trasformazioni del territorio.", "ord": 0, "pr": "2", "ris": "Non esiste attualmente un centro di ricerca e non ci sono risorse finanziarie a disposizione", "chi": "Consorzio", "fig": "", "rep": "Una competenza in grado di fare ricerca ed elaborare dati anche attraverso l'IA", "note": "Si potrebbero attivare tirocini con Unifi o borse di studio/dottorato", "add": false, "q": [1, 1, 1, 1, 1, 0, 0, 0], "orig": "Valutazione → Elaborazione di rapporti tematici territoriali", "lama": "La matrice dice «Subito», la sintesi mette i rapporti tematici in Q1 2028. Proposta: la ricerca parte subito e il primo rapporto esce in Q1 2028, in tempo per la restituzione (D18) e la campagna (D7)."}, {"id": "D28", "obj": "V3", "imp": 3, "cam": "Le cooperative sviluppano capacità di ricerca, progettazione e sviluppo di nuovi servizi anche rivolti alla domanda privata, tenendo insieme sostenibilità economica, capacità di investimento e vincoli normativi.", "cap": "Sviluppare una funzione consortile di ricerca, analisi e progettazione capace di intercettare i bisogni emergenti, valutarne la fattibilità e accompagnare lo sviluppo di nuovi servizi (si appoggia sulla funzione di conoscenza dell'area PA)", "az": "Ricercare finanziamenti per ricerca e sviluppo.", "ord": 1, "pr": "4", "ris": "Progettista esperto di innovazione sociale", "chi": "Consorzio", "fig": "", "rep": "Competenze e finanziamenti", "note": "", "add": false, "q": [0, 1, 1, 1, 1, 1, 1, 1], "orig": "Valutazione → Fundraising per ricerca e sviluppo", "lama": ""}, {"id": "D23", "obj": "V4", "imp": 3, "cam": "Le cooperative sviluppano capacità di ricerca, progettazione e sviluppo di nuovi servizi anche rivolti alla domanda privata, tenendo insieme sostenibilità economica, capacità di investimento e vincoli normativi.", "cap": "Sviluppare una funzione consortile di ricerca, analisi e progettazione capace di intercettare i bisogni emergenti, valutarne la fattibilità e accompagnare lo sviluppo di nuovi servizi (si appoggia sulla funzione di conoscenza dell'area PA)", "az": "Modificare il regolamento consortile per disciplinare la nuova funzione.", "ord": 0, "pr": "1", "ris": "Direttore e Cda Metropoli", "chi": "Più cooperative insieme", "fig": "ARCA, ALICE, Progetto 5, CAT, Coop21 · Direttore Metropoli", "rep": "", "note": "", "add": false, "q": [1, 1, 0, 0, 0, 0, 0, 0], "orig": "assente dalle schede", "lama": "Azione della matrice non ripresa in nessuna scheda, eppure è la prima per priorità dell'impatto 3: senza regolamento la funzione R&S non ha una base. Inserita nel nuovo obiettivo V4."}, {"id": "D29", "obj": "V4", "imp": 3, "cam": "Le cooperative sviluppano capacità di ricerca, progettazione e sviluppo di nuovi servizi anche rivolti alla domanda privata, tenendo insieme sostenibilità economica, capacità di investimento e vincoli normativi.", "cap": "Sviluppare una funzione consortile di ricerca, analisi e progettazione capace di intercettare i bisogni emergenti, valutarne la fattibilità e accompagnare lo sviluppo di nuovi servizi (si appoggia sulla funzione di conoscenza dell'area PA)", "az": "Costituire un team dedicato per l'Innovation Lab (investire su risorse umane o designare persone nelle cooperative) e selezionare le figure necessarie. Al workshop: «non è possibile senza una strategia».", "ord": 2, "pr": "1", "ris": "Direttore e CdA", "chi": "Consorzio con supporto esterno", "fig": "Progettista esperto di Metropoli + progettiste delle cooperative", "rep": "", "note": "", "add": false, "q": [0, 0, 0, 0, 0, 0, 1, 1], "orig": "Valutazione → Sistema condiviso di raccolta dati", "mv": true, "lama": "Nelle schede era sotto il «sistema dati» e collocata in Q2 2027; nella matrice è «Più avanti (oltre 18 mesi)» e condizionata a una strategia. Spostata in V4 con trimestri da «Più avanti»."}, {"id": "D30", "obj": "V4", "imp": 3, "cam": "Le cooperative sviluppano capacità di ricerca, progettazione e sviluppo di nuovi servizi anche rivolti alla domanda privata, tenendo insieme sostenibilità economica, capacità di investimento e vincoli normativi.", "cap": "Sviluppare una funzione consortile di ricerca, analisi e progettazione capace di intercettare i bisogni emergenti, valutarne la fattibilità e accompagnare lo sviluppo di nuovi servizi (si appoggia sulla funzione di conoscenza dell'area PA)", "az": "Definire il budget dedicato e i criteri di ripartizione dei costi tra le cooperative.", "ord": 2, "pr": "2", "ris": "cdA Metropoli", "chi": "Consorzio", "fig": "", "rep": "", "note": "", "add": false, "q": [0, 0, 0, 0, 0, 0, 1, 0], "orig": "Valutazione → Sistema condiviso di raccolta dati", "mv": true, "lama": "Come D29: nelle schede sotto il «sistema dati» in Q2 2027, nella matrice «Più avanti». Spostata in V4."}, {"id": "D24", "obj": "S1", "imp": 3, "cam": "Le esperienze e le sperimentazioni sviluppate nei diversi territori vengono messe in comune e, quando efficaci, possono essere adattate e replicate da altre cooperative.", "cap": "Sviluppare una funzione consortile di ricerca, analisi e progettazione capace di intercettare i bisogni emergenti, valutarne la fattibilità e accompagnare lo sviluppo di nuovi servizi (si appoggia sulla funzione di conoscenza dell'area PA)", "az": "Confrontarsi preventivamente sulla partecipazione a gare e bandi, individuando possibili sinergie tra cooperative.", "ord": 0, "pr": "2", "ris": "Cda di Metropoli; Direttore", "chi": "Più cooperative insieme", "fig": "ARCA, ALICE, Progetto 5, CAT, Cepiss, Coop21, Elfo, Selva, Gaetano Barberi, Eskimo, Odissea", "rep": "", "note": "", "add": false, "q": [1, 1, 1, 1, 1, 1, 1, 1], "orig": "Sviluppo commerciale → Creare una pipeline commerciale condivisa", "lama": "La sintesi colloca la pipeline in un solo trimestre (Q2 2027), ma il confronto preventivo sulle gare è per natura continuativo. Proposta: da subito e per tutto il periodo."}, {"id": "D25", "obj": "S1", "imp": 3, "cam": "Le esperienze e le sperimentazioni sviluppate nei diversi territori vengono messe in comune e, quando efficaci, possono essere adattate e replicate da altre cooperative.", "cap": "Coordinare strategicamente le cooperative intorno a opportunità, scadenze e linee comuni di sviluppo", "az": "Creare e alimentare uno strumento condiviso di mappatura di gare, scadenze, opportunità e nuovi servizi.", "ord": 1, "pr": "1", "ris": "Gruppo di lavoro Metropoli", "chi": "Consorzio", "fig": "", "rep": "", "note": "Non c'è adesso visione di insieme di cosa fanno le cooperative e dove sono: strumento che va anche aggiornato", "add": false, "q": [0, 0, 1, 1, 1, 1, 1, 1], "orig": "Sviluppo commerciale → Creare una pipeline commerciale condivisa", "lama": "Lo strumento si costruisce in Q3–Q4 2027 e poi va aggiornato (nota dei consorziati): per questo la proposta prosegue fino a fine 2028."}, {"id": "D26", "obj": "S2", "imp": 3, "cam": "Le esperienze e le sperimentazioni sviluppate nei diversi territori vengono messe in comune e, quando efficaci, possono essere adattate e replicate da altre cooperative.", "cap": "Coordinare strategicamente le cooperative intorno a opportunità, scadenze e linee comuni di sviluppo", "az": "Alimentare una pianificazione strategica consortile sulle opportunità e sulle aree di sviluppo.", "ord": 1, "pr": "2", "ris": "Direttore e il gruppo di lavoro di Metropoli", "chi": "Consorzio", "fig": "", "rep": "", "note": "N.b.: gruppo progettazione deve essere potenziato", "add": false, "q": [0, 0, 1, 1, 1, 1, 0, 0], "orig": "Sviluppo commerciale → Elaborare una strategia commerciale consortile", "lama": "La matrice dice «Dopo», la sintesi mette la strategia commerciale in Q1 2027. Le due letture sono entrambe difendibili (la strategia prima di tutto, oppure dopo la mappatura delle opportunità): da decidere in restituzione. Proposta da «Dopo»."}, {"id": "D31", "obj": "S3", "imp": 3, "cam": "Le cooperative sviluppano capacità di ricerca, progettazione e sviluppo di nuovi servizi anche rivolti alla domanda privata, tenendo insieme sostenibilità economica, capacità di investimento e vincoli normativi.", "cap": "Sviluppare una funzione consortile di ricerca, analisi e progettazione capace di intercettare i bisogni emergenti, valutarne la fattibilità e accompagnare lo sviluppo di nuovi servizi (si appoggia sulla funzione di conoscenza dell'area PA)", "az": "Individuazione di un primo progetto pilota consortile (nuovo servizio).", "ord": 2, "pr": "3", "ris": "Nuovo Team di lavoro", "chi": "Consorzio", "fig": "", "rep": "Finanziamenti e partner", "note": "", "add": false, "q": [0, 0, 0, 0, 0, 0, 1, 1], "orig": "Sviluppo commerciale → Progettare e realizzare nuove iniziative consortili", "lama": "La sintesi colloca il pilota in Q3–Q4 2027; nella matrice è «Più avanti» e presuppone regolamento (D23), team (D29) e budget (D30). Proposta da «Più avanti»; se il consorzio vuole anticiparlo, vanno anticipate anche le tre azioni che lo abilitano."}], "CHG": [{"id": "D14", "name": "Aumentare il livello di riconoscimento delle cooperative nel Consorzio (senso di appartenenza; agli incontri fare sempre riferimento alla partecipazione al Consorzio)", "imp": 2, "ord": 0, "pr": "1", "ris": "si tutte le coop", "chi": "", "fig": "", "rep": "", "note": "E' una sensibilità che deve crescere nelle cooperative non solo nei livelli dirigenziali ma anche nelle figure di responsabilità tecnica operativa", "orig": "Rappresentanza → Aumentare presenza su tavoli istituzionali", "links": ["D17", "D19", "D24", "D5"], "lama": "Riletta come cambiamento atteso, non come azione: riguarda il meta impatto (identità consortile) più che l'impatto 2. L'unica parte operativa è la pratica indicata tra parentesi (presentarsi sempre come cooperative del Consorzio), che può diventare una regola di condotta per D17 e D19 senza essere un'azione a sé."}, {"id": "D20", "name": "Aumentare il livello di consapevolezza delle cooperative e del consorzio relativamente al potere contrattuale con la PA", "imp": 2, "ord": 1, "pr": "3", "ris": "Ad oggi spesso, a differenza di altri consorzi, le cooperative si presentano alla PA come singole e non partecipanti ad un consorzio. Ciò diminuisce fortemente l'efficacia ed il riconoscimento", "chi": "Più cooperative insieme", "fig": "", "rep": "", "note": "Costruzione di una maggiore identità consortile rafforzamento della presenza del Consorzio nei singoli territori", "orig": "Rappresentanza → Aumentare presenza su tavoli istituzionali", "links": ["D17", "D19", "D21", "D8"], "lama": "Riletta come cambiamento di medio periodo dell'impatto 2: la consapevolezza del potere contrattuale è ciò che ci si aspetta dopo presenza ai tavoli (D17), evidenze portate nel confronto (D19) e interlocuzione anticipata (D21). Le note descrivono la condizione attuale, utile come baseline."}], "IMPATTI": {"1": {"name": "1 · Persone", "long": "Lavorare nella cooperazione sociale torna attrattivo. Le cooperative riescono ad attrarre, trattenere e sviluppare persone e competenze, garantendo ricambio generazionale e prospettive professionali."}, "2": {"name": "2 · PA e politiche", "long": "Le cooperative diventano partner riconosciuti della PA. Contribuiscono alla definizione delle politiche e delle risposte territoriali, anziché intervenire prevalentemente come esecutrici di servizi definiti dalla PA."}, "3": {"name": "3 · Nuove risposte", "long": "Le cooperative sviluppano risposte nuove e sostenibili ai bisogni emergenti, trasformandoli in nuovi servizi e modelli economicamente sostenibili e replicabili."}}, "ORDINI": ["Subito (0–6 mesi)", "Dopo (6–18 mesi)", "Più avanti (oltre 18 mesi)"], "AMBITI": {"R": {"name": "Rappresentanza", "imp": "impatto prevalente 2 · PA e politiche, con una componente su 1 · Persone (valore del lavoro sociale)"}, "C": {"name": "Sviluppo condiviso delle competenze", "imp": "impatto prevalente 1 · Persone"}, "V": {"name": "Valutazione, ricerca e sviluppo", "imp": "impatto 2 · PA e politiche (evidenze) e 3 · Nuove risposte (funzione R&S)"}, "S": {"name": "Sviluppo commerciale", "imp": "impatto 3 · Nuove risposte"}}};
+const Y=["2027","2028","2029"]; const QN=["Q1","Q2","Q3","Q4"];
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const ACT=Object.fromEntries(DATA.ACT.map(a=>[a.id,a])), CHG=Object.fromEntries(DATA.CHG.map(c=>[c.id,c]));
+const ORD=DATA.ORDINI;
+const IMPACTS=[
+ {n:1,short:"Persone",title:"Lavorare nella cooperazione sociale torna attrattivo",stmt:"Le cooperative riescono ad attrarre, trattenere e sviluppare persone e competenze, garantendo ricambio generazionale e prospettive professionali."},
+ {n:2,short:"PA e politiche",title:"Le cooperative diventano partner riconosciuti della PA",stmt:"Le cooperative contribuiscono alla definizione delle politiche e delle risposte territoriali, anziché intervenire prevalentemente come esecutrici di servizi definiti dalla PA."},
+ {n:3,short:"Nuove risposte",title:"Le cooperative sviluppano risposte nuove e sostenibili ai bisogni emergenti",stmt:"Le cooperative riescono a intercettare bisogni emergenti e trasformarli in nuovi servizi e modelli economicamente sostenibili e replicabili."}];
+const COLS=[{id:"s",ord:0,label:"Subito",sub:"0–6 mesi"},{id:"d",ord:1,label:"Dopo",sub:"6–18 mesi"},{id:"p",ord:2,label:"Più avanti",sub:"oltre 18 mesi"}];
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),1800);}
+
+// ================================================================ 1. BOARD DEL LABORATORIO
+let labImp=1;
+function renderLab(){
+  const im=IMPACTS[labImp-1];
+  document.getElementById("labEyebrow").textContent=`Impatto ${im.n} · ${im.short} · come lo hanno collocato i consorziati`;
+  document.getElementById("labTitle").textContent=im.title;
+  document.getElementById("labStmt").textContent=im.stmt;
+  document.getElementById("labSub").innerHTML=IMPACTS.map(i=>`<button class="btn sm ${i.n===labImp?"on":""}" data-imp="${i.n}">${i.n} · ${i.short}</button>`).join("");
+  document.getElementById("labSub").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{labImp=+b.dataset.imp;renderLab();}));
+  const all=[...DATA.ACT.map(a=>({...a,kind:"act",text:a.az})),...DATA.CHG.map(c=>({...c,kind:"chg",text:c.name,cam:"",cap:""}))].filter(a=>a.imp===labImp);
+  const ln=(k,v)=>v?`<div><b>${k}</b>${esc(v)}</div>`:"";
+  document.getElementById("labBoard").innerHTML=COLS.map(c=>{
+    const cards=all.filter(a=>a.ord===c.ord).sort((x,y)=>Number(x.pr)-Number(y.pr));
+    return `<div class="col" data-col="${c.id}"><div class="col-h"><span class="lab">${c.label}</span><span class="sub">${c.sub}</span><span class="cnt">${cards.length}</span></div><div class="list">${cards.map(a=>{
+      const det=ln("Risorse a disposizione oggi",a.ris)+ln("Chi può farla",a.chi)+ln("Cooperative / figure",a.fig)+ln("Da reperire all'esterno",a.rep)+ln("Note",a.note);
+      return `<div class="card" data-id="${a.id}"><span class="rank">${esc(a.pr).replace(/\.0$/,"")}</span><div class="txt">${esc(a.text)}</div>${det?`<div class="det">${det}</div>`:""}<div class="foot">${a.kind==="chg"?'<span class="badge-new">nuova</span>':""}<span class="badge-code">${a.id}</span></div></div>`;}).join("")||'<div class="badge-code" style="padding:6px 2px">nessuna azione</div>'}</div></div>`;
+  }).join("");
+}
+const pop=document.getElementById("pop");
+document.getElementById("labBoard").addEventListener("mouseover",e=>{
+  const card=e.target.closest(".card");if(!card)return;
+  const a=ACT[card.dataset.id]||CHG[card.dataset.id];
+  const blk=(k,v)=>`<div class="blk"><b>${k}</b>${v?esc(v):'<span class="none">non indicato</span>'}</div>`;
+  pop.innerHTML=blk("Cambiamento di medio periodo (2–5 anni)",a.cam)+blk("Capacità / funzione da costruire (1–2 anni)",a.cap);
+  const r=card.getBoundingClientRect(),W=340,gap=10;let x=r.right+gap;if(x+W>window.innerWidth-8)x=r.left-W-gap;if(x<8)x=Math.min(window.innerWidth-W-8,r.left);
+  pop.style.left=x+"px";pop.style.top="0px";pop.classList.add("on");const h=pop.offsetHeight;pop.style.top=Math.max(8,Math.min(r.top,window.innerHeight-h-8))+"px";
+});
+document.getElementById("labBoard").addEventListener("mouseout",e=>{if(!e.relatedTarget||!e.relatedTarget.closest||!e.relatedTarget.closest(".card"))pop.classList.remove("on");});
+
+// ================================================================ STATO DEL PIANO
+const KEY="metropoli-piano-v1";
+const ORIGINAL=JSON.parse(JSON.stringify(DATA.plan));
+let S={plan:JSON.parse(JSON.stringify(ORIGINAL))};
+function setStatus(t,cls){document.getElementById("statusText").textContent=t;document.getElementById("status").className="status "+(cls||"local");}
+try{const raw=localStorage.getItem(KEY);if(raw){const p=JSON.parse(raw);if(p&&p.plan){S=p;setStatus("Versione modificata in questo browser","local");}}}catch(e){}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(S));setStatus("Modifiche salvate in questo browser","saving");}catch(e){setStatus("Modifiche non salvate (archiviazione non disponibile)","local");}}
+function objOf(id){for(const a of S.plan)for(const o of a.obj)if(o.id===id)return o;}
+function effTot(o){return o.att.reduce((s,a)=>s+(Number(a.eff)||0),0);}
+const fmt=n=>{if(n==null||n==="")return "";const v=Math.round(n*10)/10;return v===0?"·":String(v).replace(".",",");};
+function effYears(a){const n=a.q.reduce((s,v)=>s+v,0);if(!n||!a.eff)return ["","",""];return [0,1,2].map(y=>a.eff*a.q.slice(y*4,y*4+4).reduce((s,v)=>s+v,0)/n);}
+function sumYears(list){const r=[0,0,0];list.forEach(a=>{effYears(a).forEach((v,i)=>{r[i]+=Number(v)||0;});});return r;}
+
+// ================================================================ 2. QUATTRO AMBITI
+function renderQuad(){
+  const q=document.getElementById("quad");let tot=0,nAtt=0;
+  const cells=["R","C","V","S"].map((k,i)=>{
+    const amb=S.plan.find(a=>a.id===k);const amT=amb.obj.reduce((s,o)=>s+effTot(o),0);tot+=amT;const na=amb.obj.reduce((s,o)=>s+o.att.length,0);nAtt+=na;
+    return `<div class="qcell"><div class="qh"><span class="k">Ambito ${i+1}</span><h2>${esc(amb.name)}</h2><div class="imp">${esc(DATA.AMBITI[k].imp)}</div></div>
+      <ol>${amb.obj.map(o=>`<li><span class="id">${o.id}</span><span>${esc(o.name)}<span class="who">${esc(o.chi||"responsabile da definire")}</span></span><span class="eff">${effTot(o)} gg</span></li>`).join("")}</ol>
+      <div class="qf"><span>${amb.obj.length} obiettivi · ${na} attività</span><b>${amT} gg/persona</b></div></div>`;
+  });
+  const center=`<div class="center"><span class="arrow">↘</span><div><div class="k">Obiettivo centrale</div><h2>Rafforzamento dei servizi consortili</h2><div class="n">${tot} gg/persona · ${nAtt} attività · 2027–2029</div></div><span class="arrow">↙</span></div>`;
+  q.innerHTML=cells[0]+cells[1]+center+cells[2]+cells[3];
+}
+
+// ================================================================ 3. PIANO
+const UI={src:true,out:true};
+function cells(arr,kind,ownerId,sub){return arr.map((v,i)=>`<td class="q" data-k="${kind}" data-id="${ownerId}" data-sub="${sub??""}" data-i="${i}"><span class="cell ${kind} ${v?"on":"off"}"></span></td>`).join("");}
+function numCells(tot,yrs){return `<td class="num tot">${fmt(tot)}</td>${yrs.map(v=>`<td class="num">${fmt(v)}</td>`).join("")}`;}
+function renderPlan(){
+  const t=document.getElementById("planTable");
+  let h=`<tr><th class="lead" rowspan="2"></th><th class="y" colspan="4">Effort gg/persona</th>${Y.map(y=>`<th class="y y${y.slice(2)}" colspan="4">${y}</th>`).join("")}<th rowspan="2" style="min-width:170px">Responsabile</th></tr>`;
+  h+=`<tr><th class="q">tot</th>${Y.map(y=>`<th class="q">${y.slice(2)}</th>`).join("")}${Y.map(()=>QN.map(q=>`<th class="q">${q}</th>`).join("")).join("")}</tr>`;
+  const NC=18;let gTot=0,gY=[0,0,0];
+  S.plan.forEach(amb=>{
+    h+=`<tr class="sec"><td colspan="${NC}">${esc(amb.name)}<span>${esc(DATA.AMBITI[amb.id].imp)}</span></td></tr>`;
+    let aT=0,aY=[0,0,0];
+    amb.obj.forEach(o=>{
+      const tot=effTot(o),yrs=sumYears(o.att);aT+=tot;aY=aY.map((v,i)=>v+yrs[i]);
+      const agg=[...Array(12).keys()].map(i=>o.att.some(a=>a.q[i])?1:0);
+      h+=`<tr class="obj" data-id="${o.id}"><td class="lead" style="background:var(--orange-t)">${o.id} · ${esc(o.name)}${o.note?`<span class="sub">${esc(o.note)}</span>`:""}</td>${numCells(tot,yrs)}${agg.map(v=>`<td class="q" data-k="none"><span class="cell agg ${v?"on":"off"}"></span></td>`).join("")}<td class="chi" data-k="chi" data-id="${o.id}">${esc(o.chi)||"<span style='color:var(--muted)'>da definire</span>"}</td></tr>`;
+      o.att.forEach((a,ai)=>{
+        h+=`<tr class="act" data-id="${o.id}" data-ai="${ai}"><td class="lead" data-k="open"><div class="t"><span class="code">${a.id}</span><div class="txt"><div class="name">${esc(a.att)}</div>${UI.out&&a.out?`<div class="out">→ ${esc(a.out)}</div>`:""}</div></div></td>${numCells(a.eff,effYears(a))}${cells(a.q,"act",o.id,ai)}<td class="chi"></td></tr>`;
+      });
+      if(UI.src)o.fonte.forEach(f=>{
+        const b=ACT[f.id]||CHG[f.id];const isC=!!CHG[f.id];
+        h+=`<tr class="src"><td class="lead" style="background:var(--soft)"><div class="t"><span class="code">${f.id}</span><div class="txt"><div class="name">${isC?"Cambiamento atteso · ":"Laboratorio · "}${esc(isC?b.name:b.az)}</div><div class="tags"><span>${esc(ORD[b.ord])}</span>${b.chi?`<span>${esc(b.chi)}</span>`:""}${b.rep?`<span>da reperire: ${esc(b.rep)}</span>`:""}</div></div></div></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num"></td>${cells(f.q,"src",f.id)}<td class="chi">${esc(f.chi)}</td></tr>`;
+      });
+    });
+    gTot+=aT;gY=gY.map((v,i)=>v+aY[i]);
+    h+=`<tr class="obj"><td class="lead" style="background:var(--orange-t)">Subtotale ${esc(amb.name)}</td>${numCells(aT,aY)}<td colspan="12"></td><td class="chi"></td></tr>`;
+  });
+  h+=`<tr class="tot"><td class="lead" style="background:var(--black);color:var(--white)">Totale piano 2027–2029</td>${numCells(gTot,gY)}<td colspan="12"></td><td></td></tr>`;
+  t.innerHTML=h;renderQuad();
+}
+document.getElementById("planTable").addEventListener("click",e=>{
+  const td=e.target.closest("td");if(!td)return;const k=td.dataset.k;
+  if(k==="act"){const a=objOf(td.dataset.id).att[+td.dataset.sub];const i=+td.dataset.i;a.q[i]=a.q[i]?0:1;persist();renderPlan();return;}
+  if(k==="open"){const tr=td.parentElement;openAct(tr.dataset.id,+tr.dataset.ai);return;}
+  if(k==="chi"){openObj(td.dataset.id);}
+});
+function autoGrow(t){t.style.height="auto";t.style.height=(t.scrollHeight+2)+"px";}
+function field(label,key,val,ro){return ro?`<div class="field"><span class="lbl">${label}</span><div class="ro">${esc(val)||"—"}</div></div>`:`<div class="field"><label for="f-${key}">${label}</label><textarea id="f-${key}" data-key="${key}" rows="1">${esc(val)}</textarea></div>`;}
+function drawer(inner){
+  const root=document.getElementById("drawerRoot");
+  root.innerHTML=`<div class="scrim" id="scrim"></div><aside class="drawer" role="dialog"><div class="body">${inner}</div><div class="dfoot"><span style="font-size:11.5px;color:var(--muted);margin-right:auto">Le modifiche si salvano mentre scrivi</span><button class="btn dark" id="drawerClose">Chiudi</button></div></aside>`;
+  const close=()=>{root.innerHTML="";};
+  document.getElementById("scrim").addEventListener("click",close);document.getElementById("drawerClose").addEventListener("click",close);
+  document.addEventListener("keydown",function k(ev){if(ev.key==="Escape"){close();document.removeEventListener("keydown",k);}});
+  root.querySelectorAll("textarea").forEach(autoGrow);return root;
+}
+function openAct(oid,ai){
+  const o=objOf(oid),a=o.att[ai];
+  const all=[...Array(12).keys()].map(i=>`${QN[i%4]} ${Y[Math.floor(i/4)].slice(2)}`);
+  let h=`<div class="head"><span class="code">${a.id} · attività</span><h3>${esc(o.name)}</h3></div>`+field("Attività","att",a.att)+field("Output","out",a.out);
+  h+=`<div class="field"><label for="f-eff">Effort (gg/persona, totale)</label><input id="f-eff" type="number" min="0" step="0.5" value="${a.eff}"></div>`;
+  h+=`<div class="field"><span class="lbl">Trimestri</span><div class="chips">${all.map((q,i)=>`<button data-qi="${i}" class="${a.q[i]?"on":""}">${q}</button>`).join("")}</div></div>`;
+  h+=field("Ripartizione per anno (calcolata)",null,effYears(a).map((v,i)=>`${Y[i]}: ${fmt(v)||"—"}`).join(" · "),true);
+  h+=field("Azioni del laboratorio di riferimento",null,o.fonte.map(f=>f.id).join(", "),true);
+  const root=drawer(h);
+  root.querySelectorAll("textarea").forEach(t=>t.addEventListener("input",()=>{autoGrow(t);a[t.dataset.key]=t.value;persist();renderPlan();}));
+  root.querySelector("#f-eff").addEventListener("input",ev=>{a.eff=Number(ev.target.value)||0;persist();renderPlan();});
+  root.querySelectorAll("[data-qi]").forEach(b=>b.addEventListener("click",()=>{const i=+b.dataset.qi;a.q[i]=a.q[i]?0:1;b.classList.toggle("on",!!a.q[i]);persist();renderPlan();}));
+}
+function openObj(oid){
+  const o=objOf(oid);
+  const root=drawer(`<div class="head"><span class="code">${o.id} · obiettivo</span></div>`+field("Obiettivo","name",o.name)+field("Responsabile","chi",o.chi)+field("Nota","note",o.note));
+  root.querySelectorAll("textarea").forEach(t=>t.addEventListener("input",()=>{autoGrow(t);o[t.dataset.key]=t.value;persist();renderPlan();}));
+}
+document.getElementById("toggleSrc").addEventListener("click",e=>{UI.src=!UI.src;e.currentTarget.classList.toggle("on",UI.src);renderPlan();});
+document.getElementById("toggleOut").addEventListener("click",e=>{UI.out=!UI.out;e.currentTarget.classList.toggle("on",UI.out);renderPlan();});
+
+// ---------- esporta
+function copyText(txt,ok){
+  const done=()=>toast(ok);
+  const fb=()=>{const ta=document.createElement("textarea");ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){toast("Copia non riuscita");}document.body.removeChild(ta);};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done).catch(fb);else fb();
+}
+function tsv(){
+  const QL=[...Array(12).keys()].map(i=>`${QN[i%4]} ${Y[Math.floor(i/4)]}`);const cl=s=>String(s??"").replace(/[\t\n\r]+/g," ");
+  const rows=[["Ambito","Obiettivo","Cod.","Attività / Azione fonte","Output","Effort tot","Effort 2027","Effort 2028","Effort 2029","Responsabile",...QL].join("\t")];
+  S.plan.forEach(amb=>amb.obj.forEach(o=>{
+    rows.push([amb.name,o.name,o.id,"(obiettivo)","",effTot(o),...sumYears(o.att).map(fmt),o.chi,...Array(12).fill("")].map(cl).join("\t"));
+    o.att.forEach(a=>rows.push([amb.name,o.name,a.id,a.att,a.out,a.eff,...effYears(a).map(fmt),"",...a.q.map(v=>v?"x":"")].map(cl).join("\t")));
+    o.fonte.forEach(f=>{const b=ACT[f.id]||CHG[f.id];rows.push([amb.name,o.name,f.id,"Laboratorio · "+(b.az||b.name),"","","","","",f.chi,...f.q.map(v=>v?"x":"")].map(cl).join("\t"));});
+  }));
+  return rows.join("\n");
+}
+const menu=document.getElementById("exportMenu");
+document.getElementById("exportBtn").addEventListener("click",e=>{e.stopPropagation();menu.classList.toggle("open");});
+document.addEventListener("click",()=>menu.classList.remove("open"));
+const pp=document.getElementById("pastePanel");
+menu.querySelectorAll("[data-exp]").forEach(b=>b.addEventListener("click",()=>{
+  const k=b.dataset.exp;menu.classList.remove("open");
+  if(k==="tsv")copyText(tsv(),"Tabella copiata: incollala in un foglio Excel");
+  else if(k==="json")copyText(JSON.stringify(S,null,1),"Copia di sicurezza copiata negli appunti");
+  else if(k==="import"){showTab("plan");pp.hidden=false;document.getElementById("pasteArea").focus();}
+  else if(k==="reset"){S={plan:JSON.parse(JSON.stringify(ORIGINAL))};try{localStorage.removeItem(KEY);}catch(e){}setStatus("Versione iniziale","local");renderPlan();toast("Ripristinata la versione iniziale");}
+}));
+document.getElementById("pasteCancel").addEventListener("click",()=>{pp.hidden=true;});
+document.getElementById("pasteOk").addEventListener("click",()=>{try{const p=JSON.parse(document.getElementById("pasteArea").value);if(!p.plan)throw 0;S=p;persist();renderPlan();pp.hidden=true;toast("Versione caricata");}catch(e){toast("JSON non valido");}});
+
+// ---------- tab
+function showTab(k){
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x.dataset.tab===k));
+  ["lab","quad","plan"].forEach(t=>document.getElementById("tab-"+t).hidden=(t!==k));
+  try{history.replaceState(null,"","#"+k);}catch(e){}
+}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+renderLab();renderPlan();
+(function(){const h=(location.hash||"").slice(1);if(["quad","plan"].includes(h))showTab(h);})();
+</script>
+</body>
+</html>
